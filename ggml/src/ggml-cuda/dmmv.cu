@@ -597,12 +597,7 @@ static void dequantize_mul_mat_vec_q6_K_cuda(const void * vx, const float * y, f
     dequantize_mul_mat_vec_q6_k<<<block_nums, block_dims, 0, stream>>>(vx, y, dst, ncols, nrows);
 }
 
-
-#ifdef REPLAY_MODE
-static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
-    if(gemv_iteration == 0) {
-        std::cout << "I am in the replay mode\n";
-    }
+void compare_results(float *gpu_result, uint32_t iteration_number, int nrows) {
     std::string filename = "record_mode/output_" + std::to_string(gemv_iteration) + ".json";
     // std::cout << " Reading " << filename << " ... \n";
 
@@ -633,8 +628,58 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
         return;
     }
 
+    for (int i=0; i<nrows; i++){
+        if(gpu_result[i] != output_matrix[i]) {
+            std::cout << "iter=" << iteration_number << " i=" << i << "  gpu_result=" << gpu_result[i] << " != json_result=" << output_matrix[i] << "\n";
+        }
+    }
+
+    // std::vector<float> final_output_matrix(output_matrix.begin(), output_matrix.end());
+
     // Copy the contents of output_matrix to dst
-    std::copy(output_matrix.begin(), output_matrix.end(), dst);
+    // std::copy(final_output_matrix.begin(), final_output_matrix.end(), dst);
+}
+#ifdef REPLAY_MODE
+static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
+    cudaDeviceSynchronize();
+    
+    if(gemv_iteration == 0) {
+        std::cout << "I am in the replay mode\n";
+    }
+    std::string filename = "record_mode/output_" + std::to_string(gemv_iteration) + ".json";
+    // std::cout << " Reading " << filename << " ... \n";
+
+    // Open the JSON file
+    std::ifstream input_file(filename);
+    if (!input_file.is_open()) {
+        std::cerr << "Error opening JSON file: " << filename << std::endl;
+        return;
+    }
+
+    // Parse the JSON file
+    json j;
+    input_file >> j;
+
+    int json_nrows = j["nrows"].get<int>();
+
+    // Check if "output_matrix" exists and read it into a vector
+    if (!j.contains("output_matrix")) {
+        std::cerr << "\"output_matrix\" key not found in JSON file: " << filename << std::endl;
+        return;
+    }
+
+    std::vector<double> output_matrix = j["output_matrix"].get<std::vector<double>>();
+
+    // Ensure that the dimensions match the expected ncols and nrows
+    if (output_matrix.size() != static_cast<size_t>(nrows)) {
+        std::cerr << "Size mismatch between output_matrix and expected dimensions." << std::endl;
+        return;
+    }
+
+    std::vector<float> final_output_matrix(output_matrix.begin(), output_matrix.end());
+
+    // Copy the contents of output_matrix to dst
+    std::copy(final_output_matrix.begin(), final_output_matrix.end(), dst);
     ++gemv_iteration;
 }
 
@@ -651,16 +696,18 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     // Wait for the GPU to finish its work
     cudaDeviceSynchronize();
 
+    /*
     // Copy the result back to host
     float *h_dst;
     h_dst = (float*)malloc(nrows * sizeof(float));
+    // std::vector<float> h_dst(nrows);
     cudaMemcpy(h_dst, dst, nrows * sizeof(float), cudaMemcpyDeviceToHost);
 
     // std::cout << "nrows=" << nrows << " ncols=" << ncols << " \n";
     std::vector<float> dst_array;  // Replace 1024 with the appropriate size
 
     for (int i = 0; i < nrows; ++i) {
-        dst_array.push_back(dst[i]);
+        dst_array.push_back(h_dst[i]);
         //std::cout << "iter-" << i << " = " << dst_array[i] << "\n";
     }
 
@@ -676,7 +723,8 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     // Write to a JSON file
     std::ofstream outfile(output_filename);
     outfile << output_json.dump(4) << std::endl;
-    outfile.close();
+    outfile.close();*/
+    compare_results(dst, gemv_iteration, nrows);
     ++gemv_iteration;
 }
 #endif
