@@ -668,7 +668,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
         return;
     }
 
-    std::vector<double> output_matrix = j["output_matrix"].get<std::vector<double>>();
+    std::vector<float> output_matrix = j["output_matrix"].get<std::vector<float>>();
 
     // Ensure that the dimensions match the expected ncols and nrows
     if (output_matrix.size() != static_cast<size_t>(nrows)) {
@@ -676,10 +676,10 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
         return;
     }
 
-    std::vector<float> final_output_matrix(output_matrix.begin(), output_matrix.end());
+    // std::vector<float> final_output_matrix(output_matrix.begin(), output_matrix.end());
 
     // Copy the contents of output_matrix to dst
-    std::copy(final_output_matrix.begin(), final_output_matrix.end(), dst);
+    std::copy(output_matrix.begin(), output_matrix.end(), dst);
     ++gemv_iteration;
 }
 
@@ -696,7 +696,6 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     // Wait for the GPU to finish its work
     cudaDeviceSynchronize();
 
-    /*
     // Copy the result back to host
     float *h_dst;
     h_dst = (float*)malloc(nrows * sizeof(float));
@@ -723,8 +722,8 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     // Write to a JSON file
     std::ofstream outfile(output_filename);
     outfile << output_json.dump(4) << std::endl;
-    outfile.close();*/
-    compare_results(dst, gemv_iteration, nrows);
+    outfile.close();
+    // compare_results(dst, gemv_iteration, nrows);
     ++gemv_iteration;
 }
 #endif
