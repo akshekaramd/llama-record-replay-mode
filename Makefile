@@ -247,7 +247,7 @@ endif
 #
 
 # keep standard at C11 and C++11
-MK_CPPFLAGS  = -Iggml/include -Iggml/src -Iinclude -Isrc -Icommon
+MK_CPPFLAGS  = -Iggml/include -Iggml/src -Iinclude -Isrc -Icommon -Ijson/
 MK_CFLAGS    = -std=c11   -fPIC
 MK_CXXFLAGS  = -std=c++11 -fPIC
 MK_NVCCFLAGS = -std=c++11

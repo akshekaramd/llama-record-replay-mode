@@ -2,6 +2,16 @@
 #include "dequantize.cuh"
 #include "convert.cuh"
 
+// AK -Additions
+#include <iostream>
+#include <fstream>
+#include <nlohmann/json.hpp>
+#include <vector>
+
+using json = nlohmann::json;
+
+uint32_t gemv_iteration = 0;    // used to track number of times the GEMV instruction was called
+
 #ifndef K_QUANTS_PER_ITERATION
 #define K_QUANTS_PER_ITERATION 2
 #else
@@ -587,14 +597,89 @@ static void dequantize_mul_mat_vec_q6_K_cuda(const void * vx, const float * y, f
     dequantize_mul_mat_vec_q6_k<<<block_nums, block_dims, 0, stream>>>(vx, y, dst, ncols, nrows);
 }
 
+
+#ifdef REPLAY_MODE
 static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
+    if(gemv_iteration == 0) {
+        std::cout << "I am in the replay mode\n";
+    }
+    std::string filename = "record_mode/output_" + std::to_string(gemv_iteration) + ".json";
+    // std::cout << " Reading " << filename << " ... \n";
+
+    // Open the JSON file
+    std::ifstream input_file(filename);
+    if (!input_file.is_open()) {
+        std::cerr << "Error opening JSON file: " << filename << std::endl;
+        return;
+    }
+
+    // Parse the JSON file
+    json j;
+    input_file >> j;
+
+    int json_nrows = j["nrows"].get<int>();
+
+    // Check if "output_matrix" exists and read it into a vector
+    if (!j.contains("output_matrix")) {
+        std::cerr << "\"output_matrix\" key not found in JSON file: " << filename << std::endl;
+        return;
+    }
+
+    std::vector<float> output_matrix = j["output_matrix"].get<std::vector<float>>();
+
+    // Ensure that the dimensions match the expected ncols and nrows
+    if (output_matrix.size() != static_cast<size_t>(nrows)) {
+        std::cerr << "Size mismatch between output_matrix and expected dimensions." << std::endl;
+        return;
+    }
+
+    // Copy the contents of output_matrix to dst
+    std::copy(output_matrix.begin(), output_matrix.end(), dst);
+    ++gemv_iteration;
+}
+
+#else
+static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
+    // std::cout << "AK - Inside the GEMV operation \n";
     GGML_ASSERT(ncols % (GGML_CUDA_DMMV_X*2) == 0);
     const int block_num_y = (nrows + GGML_CUDA_MMV_Y - 1) / GGML_CUDA_MMV_Y;
     const dim3 block_nums(block_num_y, 1, 1);
     const dim3 block_dims(WARP_SIZE, GGML_CUDA_MMV_Y, 1);
     dequantize_mul_mat_vec<GGML_TYPE_F16>
         <<<block_nums, block_dims, 0, stream>>>(vx, y, dst, ncols, nrows);
+    
+    // Wait for the GPU to finish its work
+    cudaDeviceSynchronize();
+
+    // Copy the result back to host
+    float *h_dst;
+    h_dst = (float*)malloc(nrows * sizeof(float));
+    cudaMemcpy(h_dst, dst, nrows * sizeof(float), cudaMemcpyDeviceToHost);
+
+    // std::cout << "nrows=" << nrows << " ncols=" << ncols << " \n";
+    std::vector<float> dst_array;  // Replace 1024 with the appropriate size
+
+    for (int i = 0; i < nrows; ++i) {
+        dst_array.push_back(dst[i]);
+        //std::cout << "iter-" << i << " = " << dst_array[i] << "\n";
+    }
+
+    // Convert the output to JSON format
+    json output_json;
+    output_json["iteration"] = gemv_iteration;
+    output_json["nrows"] = nrows;
+    output_json["output_matrix"] = dst_array;
+
+    // Load existing JSON data (if any) to preserve previous iterations
+    std::string output_filename = "record_mode/output_" + std::to_string(gemv_iteration) + ".json";
+
+    // Write to a JSON file
+    std::ofstream outfile(output_filename);
+    outfile << output_json.dump(4) << std::endl;
+    outfile.close();
+    ++gemv_iteration;
 }
+#endif
 
 void ggml_cuda_op_dequantize_mul_mat_vec(
     ggml_backend_cuda_context & ctx,
