@@ -980,6 +980,11 @@ int main(int argc, char ** argv) {
     }
 
     llama_print_timings(ctx);
+#ifdef REPLAY_MODE
+    std::cout << "This output was from the REPLAY_MODE\n";
+#else
+    std::cout << "Outputs recorded to record_mode/ \n";
+#endif
     write_logfile(ctx, params, model, input_tokens, output_ss.str(), output_tokens);
 
     if (ctx_guidance) { llama_free(ctx_guidance); }

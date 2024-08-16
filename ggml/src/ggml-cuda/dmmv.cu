@@ -643,9 +643,6 @@ void compare_results(float *gpu_result, uint32_t iteration_number, int nrows) {
 static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
     cudaDeviceSynchronize();
     
-    if(gemv_iteration == 0) {
-        std::cout << "I am in the replay mode\n";
-    }
     std::string filename = "record_mode/output_" + std::to_string(gemv_iteration) + ".json";
     // std::cout << " Reading " << filename << " ... \n";
 
