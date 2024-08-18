@@ -27,6 +27,14 @@
 #include <signal.h>
 #endif
 
+
+// AK - Additions
+#include <cstring>   // for memcpy
+#include <fstream>   // for file I/O
+#include <nlohmann/json.hpp>  // Include the nlohmann/json header
+#include <iomanip>
+#include "DataStorage.h"
+
 #if defined(_MSC_VER)
 #pragma warning(disable: 4244 4267) // possible loss of data
 #endif
@@ -131,6 +139,15 @@ static std::string chat_add_and_format(struct llama_model * model, std::vector<l
 int main(int argc, char ** argv) {
     gpt_params params;
     g_params = &params;
+
+    // AK- Changes related to JSON --> Memory reading go here 
+    
+#ifdef REPLAY_MODE
+    // Populate the vector with data from JSON files
+    std::cout << "Reading JSON files ................................... \n";
+    populateDataFromJson();
+    std::cout << "Completed reading JSON files ..................... \n";
+#endif
 
     if (!gpt_params_parse(argc, argv, params)) {
         gpt_params_print_usage(argc, argv, params);
@@ -554,6 +571,11 @@ int main(int argc, char ** argv) {
         embd_inp.clear();
         embd_inp.push_back(decoder_start_token_id);
     }
+
+#ifdef REPLAY_MODE
+    // Example: Read data from the first element in the reserved memory location
+    readDataFromMemory(0);
+#endif
 
     while ((n_remain != 0 && !is_antiprompt) || params.interactive) {
         // predict
@@ -984,7 +1006,8 @@ int main(int argc, char ** argv) {
     std::cout << "This output was from the REPLAY_MODE\n";
 #else
     std::cout << "Outputs recorded to record_mode/ \n";
-#endif
+#endif 
+
     write_logfile(ctx, params, model, input_tokens, output_ss.str(), output_tokens);
 
     if (ctx_guidance) { llama_free(ctx_guidance); }
