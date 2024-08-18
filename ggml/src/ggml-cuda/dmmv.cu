@@ -698,7 +698,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
 
 #else
 static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
-    std::cout << "AK - Inside the GEMV operation \n";
+
     GGML_ASSERT(ncols % (GGML_CUDA_DMMV_X*2) == 0);
     const int block_num_y = (nrows + GGML_CUDA_MMV_Y - 1) / GGML_CUDA_MMV_Y;
     const dim3 block_nums(block_num_y, 1, 1);
