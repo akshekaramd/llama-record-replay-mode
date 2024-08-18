@@ -45,10 +45,7 @@ bool fileExists(const std::string& filename) {
 void populateDataFromJson() {
     size_t index = 0;
     while (true) {
-        // Construct the file name based on the index
-        std::ostringstream oss;
-        oss << "record_mode/output_" << index << ".json";
-        std::string filename = oss.str();
+        std::string filename = "record_mode/output_" + std::to_string(index) + ".json";
 
         // Check if the file exists
         if (!fileExists(filename)) {
