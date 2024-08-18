@@ -642,11 +642,13 @@ void compare_results(float *gpu_result, uint32_t iteration_number, int nrows) {
 }
 #ifdef REPLAY_MODE
 static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
-    DataStruct& data = DataStorage::getInstance().getData(gemv_iteration);
-    std::cout << "Iteration: " << data.iteration << std::endl;
-    std::cout << "PIM Execution Time (ns): " << data.pim_execution_time_in_ns << std::endl;
+    cudaDeviceSynchronize();
+    const DataStruct& data = DataStorage::getInstance().getData(gemv_iteration);
+    // std::cout << "Iteration: " << data.iteration << std::endl;
+    // std::cout << "PIM Execution Time (ns): " << data.pim_execution_time_in_ns << std::endl;
 
     uint32_t numOfElements = data.nrows;
+    // std::cout << "numOfElements: " << numOfElements << std::endl;
     // Copy nrows of elements starting from the desired index in the original array
     std::copy(
             data.output_result_matrix, 
