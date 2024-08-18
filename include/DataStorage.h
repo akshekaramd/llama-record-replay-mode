@@ -7,6 +7,8 @@
 #include <fstream>   // for file I/O
 #include <iomanip>
 
+extern bool token_generation_phase_has_started;	// AK - Addition
+
 // Define the struct with the specified members
 struct DataStruct {
     uint32_t iteration;

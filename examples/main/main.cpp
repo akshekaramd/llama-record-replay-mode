@@ -39,6 +39,8 @@
 #pragma warning(disable: 4244 4267) // possible loss of data
 #endif
 
+bool token_generation_phase_has_started = 0; // AK - Addition
+
 static llama_context           ** g_ctx;
 static llama_model             ** g_model;
 static gpt_params               * g_params;
@@ -577,6 +579,7 @@ int main(int argc, char ** argv) {
     readDataFromMemory(0);
 #endif
 
+	token_generation_phase_has_started = 1;
     while ((n_remain != 0 && !is_antiprompt) || params.interactive) {
         // predict
         if (!embd.empty()) {

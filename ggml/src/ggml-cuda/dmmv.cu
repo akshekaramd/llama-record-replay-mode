@@ -643,6 +643,8 @@ void compare_results(float *gpu_result, uint32_t iteration_number, int nrows) {
 #ifdef REPLAY_MODE
 static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
     cudaDeviceSynchronize();
+    
+    std::cout << " token_generation_phase_has_started = " << token_generation_phase_has_started << "\n";
     const DataStruct& data = DataStorage::getInstance().getData(gemv_iteration);
     // std::cout << "Iteration: " << data.iteration << std::endl;
     // std::cout << "PIM Execution Time (ns): " << data.pim_execution_time_in_ns << std::endl;
@@ -710,6 +712,8 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     
     // Wait for the GPU to finish its work
     cudaDeviceSynchronize();
+
+    std::cout << " token_generation_phase_has_started = " << token_generation_phase_has_started << "\n";
 
     /*// Example: Read data from the first element in the reserved memory location
     std::cout << "I am going to read from dmmv.cu and read the 3rd iteration \n";
