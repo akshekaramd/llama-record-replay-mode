@@ -7,8 +7,9 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <vector>
+#include "DataStorage.h"
 
-using json = nlohmann::json;
+// using json = nlohmann::json;
 
 uint32_t gemv_iteration = 0;    // used to track number of times the GEMV instruction was called
 
@@ -609,7 +610,7 @@ void compare_results(float *gpu_result, uint32_t iteration_number, int nrows) {
     }
 
     // Parse the JSON file
-    json j;
+    nlohmann::json j;
     input_file >> j;
 
     int json_nrows = j["nrows"].get<int>();
@@ -641,6 +642,21 @@ void compare_results(float *gpu_result, uint32_t iteration_number, int nrows) {
 }
 #ifdef REPLAY_MODE
 static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
+    DataStruct& data = DataStorage::getInstance().getData(gemv_iteration);
+    std::cout << "Iteration: " << data.iteration << std::endl;
+    std::cout << "PIM Execution Time (ns): " << data.pim_execution_time_in_ns << std::endl;
+
+    uint32_t numOfElements = data.nrows;
+    // Copy nrows of elements starting from the desired index in the original array
+    std::copy(
+            data.output_result_matrix, 
+            data.output_result_matrix + numOfElements, 
+            dst
+        );
+    ++gemv_iteration;
+}
+/* // Old Verson of the code
+static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
     cudaDeviceSynchronize();
     
     std::string filename = "record_mode/output_" + std::to_string(gemv_iteration) + ".json";
@@ -654,7 +670,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     }
 
     // Parse the JSON file
-    json j;
+    nlohmann::json j;
     input_file >> j;
 
     int json_nrows = j["nrows"].get<int>();
@@ -678,11 +694,11 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     // Copy the contents of output_matrix to dst
     std::copy(output_matrix.begin(), output_matrix.end(), dst);
     ++gemv_iteration;
-}
+}*/
 
 #else
 static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
-    // std::cout << "AK - Inside the GEMV operation \n";
+    std::cout << "AK - Inside the GEMV operation \n";
     GGML_ASSERT(ncols % (GGML_CUDA_DMMV_X*2) == 0);
     const int block_num_y = (nrows + GGML_CUDA_MMV_Y - 1) / GGML_CUDA_MMV_Y;
     const dim3 block_nums(block_num_y, 1, 1);
@@ -692,6 +708,10 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     
     // Wait for the GPU to finish its work
     cudaDeviceSynchronize();
+
+    /*// Example: Read data from the first element in the reserved memory location
+    std::cout << "I am going to read from dmmv.cu and read the 3rd iteration \n";
+    readDataFromMemory(3);*/
 
     // Copy the result back to host
     float *h_dst;
@@ -708,7 +728,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     }
 
     // Convert the output to JSON format
-    json output_json;
+    nlohmann::json output_json;
     output_json["iteration"] = gemv_iteration;
     output_json["nrows"] = nrows;
     output_json["output_matrix"] = dst_array;
