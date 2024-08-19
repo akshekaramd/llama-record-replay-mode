@@ -21,7 +21,7 @@ struct DataStruct {
     uint32_t nrows;
     double pim_execution_time_in_ns;
     uint32_t output_matrix_size;
-    float output_result_matrix[15000];  // Array of 15000 float values
+    float output_result_matrix[33000];  // Array of 15000 float values
 };
 
 // Singleton class to manage the globalDataVector
