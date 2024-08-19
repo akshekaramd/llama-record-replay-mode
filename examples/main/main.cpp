@@ -34,6 +34,7 @@
 #include <nlohmann/json.hpp>  // Include the nlohmann/json header
 #include <iomanip>
 #include "DataStorage.h"
+#include <chrono>
 
 #if defined(_MSC_VER)
 #pragma warning(disable: 4244 4267) // possible loss of data
@@ -580,6 +581,7 @@ int main(int argc, char ** argv) {
 #endif
 
 	token_generation_phase_has_started = 1;
+    auto start_time = std::chrono::high_resolution_clock::now();
     while ((n_remain != 0 && !is_antiprompt) || params.interactive) {
         // predict
         if (!embd.empty()) {
@@ -998,6 +1000,9 @@ int main(int argc, char ** argv) {
             is_interacting = true;
         }
     }
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto total_elapsed_time = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+    std::cout << " AK --------> Total Token Generation Time = " << total_elapsed_time << " ms\n";
 
     if (!path_session.empty() && params.prompt_cache_all && !params.prompt_cache_ro) {
         LOG_TEE("\n%s: saving final output to session file '%s'\n", __func__, path_session.c_str());
