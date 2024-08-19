@@ -1012,6 +1012,10 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
 
     total_time_elapsed = gemv_plus_sim_timer.getTotalElapsedTime();
     double pim_time_for_this_gemv_op_in_ns = total_pim_exec_time_in_ns - pim_timer_obj.getTotalElapsedTime();
+
+    // Now update the pim_timer_obj to store the total time spent on PIM execution so far
+    pim_timer_obj.update_timer(total_pim_exec_time_in_ns);
+    
     std::cout << "Iter-" << gemv_plus_sim_timer.getIterNum() << " Total accumulated time for (GEMV + Sim_Time): " << total_time_elapsed << " ms" << std::endl;
     std::cout << "PIM Execution time for this gemv op = " << pim_time_for_this_gemv_op_in_ns << " ns \n";
     std::cout << "Total PIM Execution Time (ns) = " << total_pim_exec_time_in_ns << "\n";
