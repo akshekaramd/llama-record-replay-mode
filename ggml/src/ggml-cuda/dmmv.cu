@@ -8,6 +8,8 @@
 #include <nlohmann/json.hpp>
 #include <vector>
 #include "DataStorage.h"
+#include <time.h>
+#include <chrono>
 
 // using json = nlohmann::json;
 
@@ -17,6 +19,140 @@ uint32_t gemv_iteration = 0;    // used to track number of times the GEMV instru
 #define K_QUANTS_PER_ITERATION 2
 #else
 static_assert(K_QUANTS_PER_ITERATION == 1 || K_QUANTS_PER_ITERATION == 2, "K_QUANTS_PER_ITERATION must be 1 or 2");
+#endif
+
+#ifndef REPLAY_MODE
+class GEMVTimer {
+public:
+    // Delete copy constructor and assignment operator
+    GEMVTimer(const GEMVTimer&) = delete;
+    GEMVTimer& operator=(const GEMVTimer&) = delete;
+
+    static GEMVTimer& getInstance() {
+        static GEMVTimer instance;
+        return instance;
+    }
+
+    void reset() {
+        total_elapsed_time_ = 0;
+    }
+
+    void start() {
+        start_time_ = std::chrono::high_resolution_clock::now();
+    }
+
+    void stop() {
+        auto end_time = std::chrono::high_resolution_clock::now();
+        total_elapsed_time_ += std::chrono::duration<double, std::milli>(end_time - start_time_).count();
+    }
+
+    void increment_gemv_counter() {
+        ++iter_num_;
+    }
+
+    double getTotalElapsedTime() {
+        return total_elapsed_time_;
+    }
+
+    int64_t getIterNum() {
+        return iter_num_;
+    }
+
+private:
+    GEMVTimer() : total_elapsed_time_(0.0) {
+        start_time_ = std::chrono::high_resolution_clock::now();
+    }
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> start_time_;
+    double total_elapsed_time_;
+    int64_t iter_num_ = 0;
+};
+
+class GEMV_plus_Sim_Timer {
+public:
+    // Delete copy constructor and assignment operator
+    GEMV_plus_Sim_Timer(const GEMV_plus_Sim_Timer&) = delete;
+    GEMV_plus_Sim_Timer& operator=(const GEMV_plus_Sim_Timer&) = delete;
+
+    static GEMV_plus_Sim_Timer& getInstance() {
+        static GEMV_plus_Sim_Timer instance;
+        return instance;
+    }
+
+    void reset() {
+        total_elapsed_time_ = 0;
+    }
+
+    void start() {
+        start_time_ = std::chrono::high_resolution_clock::now();
+    }
+
+    void stop() {
+        auto end_time = std::chrono::high_resolution_clock::now();
+        total_elapsed_time_ += std::chrono::duration<double, std::milli>(end_time - start_time_).count();
+    }
+
+    void increment_gemv_plus_sim_counter() {
+        ++iter_num_;
+    }
+
+    double getTotalElapsedTime() {
+        return total_elapsed_time_;
+    }
+
+    int64_t getIterNum() {
+        return iter_num_;
+    }
+
+private:
+    GEMV_plus_Sim_Timer() : total_elapsed_time_(0.0) {
+        start_time_ = std::chrono::high_resolution_clock::now();
+    }
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> start_time_;
+    double total_elapsed_time_;
+    int64_t iter_num_ = 0;
+};
+
+class pim_timer {
+public:
+    // Delete copy constructor and assignment operator
+    pim_timer(const pim_timer&) = delete;
+    pim_timer& operator=(const pim_timer&) = delete;
+
+    static pim_timer& getInstance() {
+        static pim_timer instance;
+        return instance;
+    }
+
+    void reset() {
+        total_pim_time_ = 0;
+    }
+
+    void update_timer(double new_total_pim_time) {
+        total_pim_time_ = new_total_pim_time;
+
+        // If you are updating the timer, that indicates a new PIM execution
+        // has taken place, hence we increase the num_of_pim_ops_ value
+        ++num_of_pim_ops_;
+    }
+
+    double getTotalElapsedTime() {
+        return total_pim_time_;
+    }
+
+    int64_t get_num_of_pim_ops() {
+        return num_of_pim_ops_;
+    }
+
+private:
+    pim_timer() : total_pim_time_(0.0) {
+        total_pim_time_ = 0;
+    }
+
+    double total_pim_time_ = 0;
+    int64_t num_of_pim_ops_ = 0;
+};
 #endif
 
 static __global__ void dequantize_mul_mat_vec_q2_k(const void * __restrict__ vx, const float * __restrict__ yy, float * __restrict__ dst, const int ncols, int nrows) {
@@ -598,6 +734,7 @@ static void dequantize_mul_mat_vec_q6_K_cuda(const void * vx, const float * y, f
     dequantize_mul_mat_vec_q6_k<<<block_nums, block_dims, 0, stream>>>(vx, y, dst, ncols, nrows);
 }
 
+// This is only used for debugging
 void compare_results(float *gpu_result, uint32_t iteration_number, int nrows) {
     std::string filename = "record_mode/output_" + std::to_string(gemv_iteration) + ".json";
     // std::cout << " Reading " << filename << " ... \n";
@@ -612,8 +749,6 @@ void compare_results(float *gpu_result, uint32_t iteration_number, int nrows) {
     // Parse the JSON file
     nlohmann::json j;
     input_file >> j;
-
-    int json_nrows = j["nrows"].get<int>();
 
     // Check if "output_matrix" exists and read it into a vector
     if (!j.contains("output_matrix")) {
@@ -640,17 +775,38 @@ void compare_results(float *gpu_result, uint32_t iteration_number, int nrows) {
     // Copy the contents of output_matrix to dst
     // std::copy(final_output_matrix.begin(), final_output_matrix.end(), dst);
 }
+
+#define     PROMPT_RESPONSE_PHASE_HAS_STARTED         1
+#define     PROMPT_RESPONSE_PHASE_HAS_NOT_STARTED     0
+
 #ifdef REPLAY_MODE
 static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
     cudaDeviceSynchronize();
     
+    // Execute the replay ops only for token generation phase
+    // For rest of the ops, execute on the actual GPU
+    if(token_generation_phase_has_started == PROMPT_RESPONSE_PHASE_HAS_NOT_STARTED) {
+        GGML_ASSERT(ncols % (GGML_CUDA_DMMV_X*2) == 0);
+        const int block_num_y = (nrows + GGML_CUDA_MMV_Y - 1) / GGML_CUDA_MMV_Y;
+        const dim3 block_nums(block_num_y, 1, 1);
+        const dim3 block_dims(WARP_SIZE, GGML_CUDA_MMV_Y, 1);
+        dequantize_mul_mat_vec<GGML_TYPE_F16>
+            <<<block_nums, block_dims, 0, stream>>>(vx, y, dst, ncols, nrows);
+        return;
+    }
+
+    // This function basically reads the json data stored in the memory into the dst output variable
+    // Obviously this function has a little bit of overhead while performing this copy. We need to account for this.
+    // The amount of time to sleep here = (total pim_time_for_this_gemv_op) - (total time consumed by this function)
+
+    auto start_time = std::chrono::high_resolution_clock::now();
+
     std::cout << " token_generation_phase_has_started = " << token_generation_phase_has_started << "\n";
     const DataStruct& data = DataStorage::getInstance().getData(gemv_iteration);
     // std::cout << "Iteration: " << data.iteration << std::endl;
     // std::cout << "PIM Execution Time (ns): " << data.pim_execution_time_in_ns << std::endl;
 
     uint32_t numOfElements = data.nrows;
-    // std::cout << "numOfElements: " << numOfElements << std::endl;
     // Copy nrows of elements starting from the desired index in the original array
     std::copy(
             data.output_result_matrix, 
@@ -658,7 +814,13 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
             dst
         );
     ++gemv_iteration;
+    
+    auto end_time = std::chrono::high_resolution_clock::now();
+    double this_function_overhead_in_ns = std::chrono::duration<double, std::nanosecond>(end_time - start_time).count();
+    double time_to_sleep_for_this_gemv_iter = data.pim_execution_time_in_ns - this_function_overhead_in_ns;
+    std::this_thread::sleep_for(time_to_sleep_for_this_gemv_iter);
 }
+
 /* // Old Verson of the code
 static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
     cudaDeviceSynchronize();
@@ -700,8 +862,113 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     ++gemv_iteration;
 }*/
 
-#else
+#else  // This is in RECORD_MODE
+
+// Function to find the nearest next highest power of 2
+unsigned int roundToNearestPowerOf2(unsigned int n) {
+    // If its 0, the answer is technically 0. 
+    // But the simulator only accepts powers of 2 as input.
+    // Hence, it should return 0 rather than an odd number. 
+    if (n == 0) return 0;
+    if (n == 1) return 2;
+
+    // If n is already a power of 2, return n
+    if (n && !(n & (n - 1))) {
+        return n;
+    }
+
+    // Otherwise, find the next power of 2
+    unsigned int power = 1;
+    while (power < n) {
+        power <<= 1;
+    }
+    
+    return power;
+}
+
+int send_dimension_args(int input_arg, int output_arg) {
+    printf("Sending inp=%d outp=%d to simulator \n", input_arg, output_arg);
+    int fd;
+    int send_packet[] = {input_arg, output_arg};
+
+    // Open the named pipe for writing
+    fd = open("/tmp/llama2simulator_dimesionArgs", O_WRONLY);
+
+    if (fd == -1) {
+        perror("Failed to open named pipe");
+        return 1;
+    }
+    write(fd, send_packet, sizeof(send_packet));
+    close(fd);
+    return 0;
+}
+
+int recieveExecTimeInNsAndUpdateTiming(double *ExecTimeInNs) {
+    const char* fifoPath = "/tmp/sim2llama_execTimeInNs";
+    double receivedValue;
+
+    // Open the named pipe for reading
+    int fd = open(fifoPath, O_RDONLY);
+    if (fd == -1) {
+        perror("Failed to open named pipe");
+        return 1;
+    }
+
+    // Read the double value from the named pipe
+    ssize_t bytes_read = read(fd, &receivedValue, sizeof(receivedValue));
+    if (bytes_read == -1) {
+        perror("Failed to read from named pipe");
+        close(fd);
+        return 1;
+    }
+
+    printf("Received: %f\n", receivedValue);
+
+    *ExecTimeInNs = receivedValue;
+    close(fd);
+    return 0;
+}
+
 static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
+
+    // Wait for the GPU to finish its prev. work before the following starts
+    cudaDeviceSynchronize();
+
+    // Execute the replay ops only for token generation phase
+    // For rest of the ops, execute on the actual GPU
+    if(token_generation_phase_has_started == PROMPT_RESPONSE_PHASE_HAS_NOT_STARTED) {
+        GGML_ASSERT(ncols % (GGML_CUDA_DMMV_X*2) == 0);
+        const int block_num_y = (nrows + GGML_CUDA_MMV_Y - 1) / GGML_CUDA_MMV_Y;
+        const dim3 block_nums(block_num_y, 1, 1);
+        const dim3 block_dims(WARP_SIZE, GGML_CUDA_MMV_Y, 1);
+        dequantize_mul_mat_vec<GGML_TYPE_F16>
+            <<<block_nums, block_dims, 0, stream>>>(vx, y, dst, ncols, nrows);
+        return;
+    }
+
+    std::cout << " token_generation_phase_has_started = " << token_generation_phase_has_started << "\n";
+
+    GEMVTimer& gemv_timer = GEMVTimer::getInstance();
+    GEMV_plus_Sim_Timer& gemv_plus_sim_timer = GEMV_plus_Sim_Timer::getInstance();
+    pim_timer& pim_timer_obj = pim_timer::getInstance();
+
+    /*
+    if(prompt_response_phase_started == PROMPT_RESPONSE_PHASE_HAS_STARTED) { 
+	// Reset the gemv_timer at this point since previous GEMV calls were for model loading phase,
+        // prompt sampling phase and prompt evaluation phase.
+        // Now the model will generate a response for the given prompt after parsing and 
+        // understanding the input prompt. 
+
+        gemv_plus_sim_timer.reset();
+        gemv_timer.reset();
+
+        // We reset the flag back to zero 
+        // TODO - Can we document this better to avoid the confusion?
+        prompt_response_phase_started = PROMPT_RESPONSE_PHASE_HAS_NOT_STARTED;
+    }*/
+
+    gemv_plus_sim_timer.start();
+    gemv_timer.start();
 
     GGML_ASSERT(ncols % (GGML_CUDA_DMMV_X*2) == 0);
     const int block_num_y = (nrows + GGML_CUDA_MMV_Y - 1) / GGML_CUDA_MMV_Y;
@@ -709,16 +976,43 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     const dim3 block_dims(WARP_SIZE, GGML_CUDA_MMV_Y, 1);
     dequantize_mul_mat_vec<GGML_TYPE_F16>
         <<<block_nums, block_dims, 0, stream>>>(vx, y, dst, ncols, nrows);
-    
-    // Wait for the GPU to finish its work
     cudaDeviceSynchronize();
+    gemv_timer.stop();
+    gemv_timer.increment_gemv_counter();
 
-    std::cout << " token_generation_phase_has_started = " << token_generation_phase_has_started << "\n";
+    double total_time_elapsed = gemv_timer.getTotalElapsedTime();
+    std::cout << "Iter-" << gemv_timer.getIterNum() << " Total accumulated time for GEMV: " << total_time_elapsed << " ms" << std::endl;
 
-    /*// Example: Read data from the first element in the reserved memory location
-    std::cout << "I am going to read from dmmv.cu and read the 3rd iteration \n";
-    readDataFromMemory(3);*/
+    int ret_value = 1;
 
+    // Now send the args to the simulator
+    ret_value = send_dimension_args(
+                        roundToNearestPowerOf2(ncols),
+                        roundToNearestPowerOf2(nrows)
+                );
+    if(ret_value != 0) {
+        printf("Error in sending dimension args to simulator. Exiting \n");
+        exit(0);
+    }
+
+    // Recieve the exec time from the simulator
+    double total_pim_exec_time_in_ns = 0;
+    ret_value = recieveExecTimeInNsAndUpdateTiming(&total_pim_exec_time_in_ns);
+    if(ret_value != 0) {
+        printf("Error in Recieving Execution Time from simulator. Exiting \n");
+        exit(0);
+    }
+    gemv_plus_sim_timer.stop();
+    gemv_plus_sim_timer.increment_gemv_plus_sim_counter();
+
+    total_time_elapsed = gemv_plus_sim_timer.getTotalElapsedTime();
+    double pim_time_for_this_gemv_op_in_ns = total_pim_exec_time_in_ns - pim_timer_obj.getTotalElapsedTime();
+    std::cout << "Iter-" << gemv_plus_sim_timer.getIterNum() << " Total accumulated time for (GEMV + Sim_Time): " << total_time_elapsed << " ms" << std::endl;
+    std::cout << "PIM Execution time for this gemv op = " << pim_time_for_this_gemv_op_in_ns << " ns \n";
+    std::cout << "Total PIM Execution Time (ns) = " << total_pim_exec_time_in_ns << "\n";
+    std::cout << " ----- End of Operation ------ \n";
+
+    // Following code will store the results into JSON files for it to replayed back later
     // Copy the result back to host
     float *h_dst;
     h_dst = (float*)malloc(nrows * sizeof(float));
@@ -737,6 +1031,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     nlohmann::json output_json;
     output_json["iteration"] = gemv_iteration;
     output_json["nrows"] = nrows;
+    output_json["gemv_pim_exec_time_in_ns"] = pim_time_for_this_gemv_op_in_ns;
     output_json["output_matrix"] = dst_array;
 
     // Load existing JSON data (if any) to preserve previous iterations

@@ -7,6 +7,12 @@
 #include <fstream>   // for file I/O
 #include <iomanip>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <cstring>
+
 extern bool token_generation_phase_has_started;	// AK - Addition
 
 // Define the struct with the specified members
@@ -47,4 +53,5 @@ private:
 
 void populateDataFromJson();
 void readDataFromMemory(size_t index);
+
 // #endif // DATA_STORAGE_H

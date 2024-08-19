@@ -67,7 +67,7 @@ void populateDataFromJson() {
         DataStruct data;
         data.iteration = j["iteration"].get<uint32_t>();
         data.nrows = j["nrows"].get<uint32_t>();
-        // data.pim_execution_time_in_ns = j["pim_execution_time_in_ns"].get<double>(); TODO
+        data.pim_execution_time_in_ns = j["gemv_pim_exec_time_in_ns"].get<double>();
         // data.output_matrix_size = j["output_matrix_size"].get<uint32_t>();
 
         // Copy the output_result_matrix array from JSON
