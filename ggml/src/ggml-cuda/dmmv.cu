@@ -11,6 +11,7 @@
 #include <time.h>
 #include <chrono>
 #include <thread>
+#include <atomic>
 
 // using json = nlohmann::json;
 
@@ -819,11 +820,13 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     auto end_time = std::chrono::high_resolution_clock::now();
     double this_function_overhead_in_ns = std::chrono::duration<double, std::nano>(end_time - start_time).count();
     double time_to_sleep_for_this_gemv_iter = data.pim_execution_time_in_ns - this_function_overhead_in_ns;
-	
+
     // Convert the double value to std::chrono::nanoseconds
     std::chrono::nanoseconds sleep_duration(static_cast<long long>(time_to_sleep_for_this_gemv_iter));
-    
+   
+    std::atomic_thread_fence(std::memory_order_acquire); 
     std::this_thread::sleep_for(sleep_duration);
+    std::atomic_thread_fence(std::memory_order_release);
 }
 
 /* // Old Verson of the code
