@@ -1,6 +1,5 @@
 # Extensions
 
-*.a
 *.bat
 *.bin
 *.dll
@@ -129,3 +128,5 @@ poetry.toml
 
 # Scripts
 !/scripts/install-oneapi.bat
+
+record_mode/
