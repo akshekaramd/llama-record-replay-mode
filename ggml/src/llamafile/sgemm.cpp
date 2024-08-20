@@ -64,6 +64,8 @@
 uint32_t    gemv_iteration = 0;
 std::mutex  mtx;
 
+extern bool token_generation_phase_has_started;
+
 #ifdef _MSC_VER
 #define NOINLINE __declspec(noinline)
 #else
@@ -378,7 +380,7 @@ class tinyBLAS {
     void matmul(int64_t m, int64_t n) {
         mnpack(0, m, 0, n);
 
-        if(n != 1) {
+        if((n != 1) && (token_generation_phase_has_started ==1)) {
             return;
         }
 
