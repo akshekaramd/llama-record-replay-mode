@@ -52,6 +52,18 @@
 #include "ggml-impl.h"
 #include "ggml-quants.h"
 
+// AK - Additions
+#include <thread>
+#include <mutex>
+#include <iostream>
+#include <fstream>
+#include <nlohmann/json.hpp>
+#include <vector>
+#include "DataStorage.h"
+
+uint32_t    gemv_iteration = 0;
+std::mutex  mtx;
+
 #ifdef _MSC_VER
 #define NOINLINE __declspec(noinline)
 #else
@@ -65,6 +77,14 @@
 #endif
 
 #define MM256_SET_M128I(a, b) _mm256_insertf128_si256(_mm256_castsi128_si256(b), (a), 1)
+
+void print_message(const std::string& message) {
+    // Lock the mutex to ensure exclusive access to stdout
+    std::lock_guard<std::mutex> guard(std::mutex);
+    
+    // Print the message and flush stdout
+    std::cout << message << std::endl << std::flush;
+}
 
 namespace {
 
@@ -238,6 +258,111 @@ template <> inline __m512 load(const ggml_fp16_t *p) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // FLOATING POINT MATRIX MULTIPLICATION
 
+// Function to find the nearest next highest power of 2
+unsigned int roundToNearestPowerOf2(unsigned int n) {
+    // If its 0, the answer is technically 0. 
+    // But the simulator only accepts powers of 2 as input.
+    // Hence, it should return 0 rather than an odd number. 
+    if (n == 0) return 0;
+    if (n == 1) return 2;
+
+    // If n is already a power of 2, return n
+    if (n && !(n & (n - 1))) {
+        return n;
+    }
+
+    // Otherwise, find the next power of 2
+    unsigned int power = 1;
+    while (power < n) {
+        power <<= 1;
+    }
+    
+    return power;
+}
+
+int send_dimension_args(int input_arg, int output_arg) {
+    printf("Sending inp=%d outp=%d to simulator \n", input_arg, output_arg);
+    int fd;
+    int send_packet[] = {input_arg, output_arg};
+
+    // Open the named pipe for writing
+    fd = open("/tmp/llama2simulator_dimesionArgs", O_WRONLY);
+
+    if (fd == -1) {
+        perror("Failed to open named pipe");
+        return 1;
+    }
+    write(fd, send_packet, sizeof(send_packet));
+    close(fd);
+    return 0;
+}
+
+int receiveExecTimeInNsAndUpdateTiming(double *ExecTimeInNs) {
+    const char* fifoPath = "/tmp/sim2llama_execTimeInNs";
+    double receivedValue;
+
+    // Open the named pipe for reading
+    int fd = open(fifoPath, O_RDONLY);
+    if (fd == -1) {
+        perror("Failed to open named pipe");
+        return 1;
+    }
+
+    // Read the double value from the named pipe
+    ssize_t bytes_read = read(fd, &receivedValue, sizeof(receivedValue));
+    if (bytes_read == -1) {
+        perror("Failed to read from named pipe");
+        close(fd);
+        return 1;
+    }
+
+    printf("Received: %f\n", receivedValue);
+
+    *ExecTimeInNs = receivedValue;
+    close(fd);
+    return 0;
+}
+
+class pim_timer {
+public:
+    // Delete copy constructor and assignment operator
+    pim_timer(const pim_timer&) = delete;
+    pim_timer& operator=(const pim_timer&) = delete;
+
+    static pim_timer& getInstance() {
+        static pim_timer instance;
+        return instance;
+    }
+
+    void reset() {
+        total_pim_time_ = 0;
+    }
+
+    void update_timer(double new_total_pim_time) {
+        total_pim_time_ = new_total_pim_time;
+
+        // If you are updating the timer, that indicates a new PIM execution
+        // has taken place, hence we increase the num_of_pim_ops_ value
+        ++num_of_pim_ops_;
+    }
+
+    double getTotalElapsedTime() {
+        return total_pim_time_;
+    }
+
+    int64_t get_num_of_pim_ops() {
+        return num_of_pim_ops_;
+    }
+
+private:
+    pim_timer() : total_pim_time_(0.0) {
+        total_pim_time_ = 0;
+    }
+
+    double total_pim_time_ = 0;
+    int64_t num_of_pim_ops_ = 0;
+};
+
 template <int KN, typename D, typename V, typename TA, typename TB, typename TC>
 class tinyBLAS {
   public:
@@ -249,9 +374,91 @@ class tinyBLAS {
         : A(A), B(B), C(C), k(k), lda(lda), ldb(ldb), ldc(ldc), ith(ith), nth(nth) {
     }
 
+    // Vanilla Code
     void matmul(int64_t m, int64_t n) {
         mnpack(0, m, 0, n);
+
+        if(n != 1) {
+            return;
+        }
+
+        mtx.lock();  // Lock the mutex
+        int ret_value = 1;
+        pim_timer& pim_timer_obj = pim_timer::getInstance();
+
+        // Now send the args to the simulator
+        ret_value = send_dimension_args(
+                        roundToNearestPowerOf2(n),
+                        roundToNearestPowerOf2(m)
+            );
+        
+        if(ret_value != 0) {
+            printf("Error in sending dimension args to simulator. Exiting \n");
+            exit(0);
+        }
+
+        // Recieve the exec time from the simulator
+        double total_pim_exec_time_in_ns = 0;
+        ret_value = receiveExecTimeInNsAndUpdateTiming(&total_pim_exec_time_in_ns);
+        if(ret_value != 0) {
+            printf("Error in Recieving Execution Time from simulator. Exiting \n");
+            exit(0);
+        }
+
+        double pim_time_for_this_gemv_op_in_ns = total_pim_exec_time_in_ns - pim_timer_obj.getTotalElapsedTime();
+        
+        // Now update the pim_timer_obj to store the total time spent on PIM execution so far
+        pim_timer_obj.update_timer(total_pim_exec_time_in_ns);
+
+        std::vector<float> dst_array;  // Replace 1024 with the appropriate size
+
+        for (int i = 0; i < m; ++i) {
+            dst_array.push_back(C[i]);
+            //std::cout << "iter-" << i << " = " << dst_array[i] << "\n";
+        }
+
+        // Convert the output to JSON format
+        nlohmann::json output_json;
+        output_json["iteration"] = gemv_iteration;
+        output_json["nrows"] = m;
+        output_json["gemv_pim_exec_time_in_ns"] = pim_time_for_this_gemv_op_in_ns;
+        output_json["output_matrix"] = dst_array;
+
+        // Load existing JSON data (if any) to preserve previous iterations
+        std::string output_filename = "record_mode/output_" + std::to_string(gemv_iteration) + ".json";
+
+        // Write to a JSON file
+        std::ofstream outfile(output_filename);
+        outfile << output_json.dump(4) << std::endl;
+        outfile.close();
+        // compare_results(dst, gemv_iteration, nrows);
+        ++gemv_iteration;
+
+        std::cout << "m=" << m << " n=" << n << "\n";
+        std::cout << "PIM Execution time for this gemv op = " << pim_time_for_this_gemv_op_in_ns << " ns \n";
+        std::cout << "Total PIM Execution Time (ns) = " << total_pim_exec_time_in_ns << "\n";
+        std::cout << " ----- End of Operation ------ \n";
+        mtx.unlock();  // Lock the mutex
+
+        /*
+        // Print the resultant vector C
+        std::string result = "Resultant C: [";
+        for (int64_t i = 0; i < ldc * n; ++i) {
+            result += std::to_string(C[i]);
+            if (i < ldc * n - 1) {
+                result += ", ";
+            }
+        }
+        result += "]";
+
+        // Pass the string to the function that prints it
+        print_message(result);*/
     }
+
+    /*// Vanilla code
+    void matmul(int64_t m, int64_t n) {
+        mnpack(0, m, 0, n);
+    }*/
 
   private:
     NOINLINE void mnpack(int64_t m0, int64_t m, int64_t n0, int64_t n) {
