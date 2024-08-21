@@ -320,7 +320,7 @@ class tinyBLAS {
             return;
         }
 
-        // mtx.lock();  // Lock the mutex
+        mtx.lock();  // Lock the mutex
         // This function basically reads the json data stored in the memory into the dst output variable
         // Obviously this function has a little bit of overhead while performing this copy. We need to account for this.
         // The amount of time to sleep here = (total pim_time_for_this_gemv_op) - (total time consumed by this function)
@@ -352,7 +352,7 @@ class tinyBLAS {
         std::atomic_thread_fence(std::memory_order_acquire); 
         std::this_thread::sleep_for(sleep_duration);
         std::atomic_thread_fence(std::memory_order_release);
-        // mtx.unlock();  // Lock the mutex
+        mtx.unlock();  // Lock the mutex
     }
 #else   // RECORD MODE
     // Vanilla Code
