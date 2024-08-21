@@ -15,7 +15,7 @@
 
 // using json = nlohmann::json;
 
-uint32_t gemv_iteration = 0;    // used to track number of times the GEMV instruction was called
+extern uint32_t gemv_iteration;    // used to track number of times the GEMV instruction was called
 
 #ifndef K_QUANTS_PER_ITERATION
 #define K_QUANTS_PER_ITERATION 2
@@ -956,9 +956,9 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
 
     std::cout << " token_generation_phase_has_started = " << token_generation_phase_has_started << "\n";
 
-    GEMVTimer& gemv_timer = GEMVTimer::getInstance();
-    GEMV_plus_Sim_Timer& gemv_plus_sim_timer = GEMV_plus_Sim_Timer::getInstance();
-    pim_timer& pim_timer_obj = pim_timer::getInstance();
+    // GEMVTimer& gemv_timer = GEMVTimer::getInstance();
+    // GEMV_plus_Sim_Timer& gemv_plus_sim_timer = GEMV_plus_Sim_Timer::getInstance();
+    // pim_timer& pim_timer_obj = pim_timer::getInstance();
 
     /*
     if(prompt_response_phase_started == PROMPT_RESPONSE_PHASE_HAS_STARTED) { 
@@ -975,8 +975,8 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
         prompt_response_phase_started = PROMPT_RESPONSE_PHASE_HAS_NOT_STARTED;
     }*/
 
-    gemv_plus_sim_timer.start();
-    gemv_timer.start();
+    // gemv_plus_sim_timer.start();
+    // gemv_timer.start();
 
     GGML_ASSERT(ncols % (GGML_CUDA_DMMV_X*2) == 0);
     const int block_num_y = (nrows + GGML_CUDA_MMV_Y - 1) / GGML_CUDA_MMV_Y;
@@ -984,8 +984,45 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     const dim3 block_dims(WARP_SIZE, GGML_CUDA_MMV_Y, 1);
     dequantize_mul_mat_vec<GGML_TYPE_F16>
         <<<block_nums, block_dims, 0, stream>>>(vx, y, dst, ncols, nrows);
+    
     cudaDeviceSynchronize();
-    gemv_timer.stop();
+
+    // Simulate with these dimensions on PIM 
+    double pim_time_for_this_gemv_op_in_ns = simulate_gemv_on_pim(ncols, nrows);
+
+    // Copy the result back to host
+    float *h_dst;
+    h_dst = (float*)malloc(nrows * sizeof(float));
+    // std::vector<float> h_dst(nrows);
+    cudaMemcpy(h_dst, dst, nrows * sizeof(float), cudaMemcpyDeviceToHost);
+
+    // std::cout << "nrows=" << nrows << " ncols=" << ncols << " \n";
+    std::vector<float> dst_array;
+
+    for (int i = 0; i < nrows; ++i) {
+        dst_array.push_back(h_dst[i]);
+        //std::cout << "iter-" << i << " = " << dst_array[i] << "\n";
+    }
+
+    // Convert the output to JSON format
+    nlohmann::json output_json;
+    output_json["iteration"] = gemv_iteration;
+    output_json["nrows"] = m;
+    output_json["gemv_pim_exec_time_in_ns"] = pim_time_for_this_gemv_op_in_ns;
+    output_json["output_matrix"] = dst_array;
+
+    // Load existing JSON data (if any) to preserve previous iterations
+    std::string output_filename = "record_mode/output_" + std::to_string(gemv_iteration) + ".json";
+
+    // Write to a JSON file
+    std::ofstream outfile(output_filename);
+    outfile << output_json.dump(4) << std::endl;
+    outfile.close();
+
+    ++gemv_iteration;
+    std::cout << "GPU ------ gemv_iteration = " << gemv_iteration << " \n";
+
+    /* gemv_timer.stop();
     gemv_timer.increment_gemv_counter();
 
     double total_time_elapsed = gemv_timer.getTotalElapsedTime();
@@ -1054,7 +1091,8 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     outfile << output_json.dump(4) << std::endl;
     outfile.close();
     // compare_results(dst, gemv_iteration, nrows);
-    ++gemv_iteration;
+
+    ++gemv_iteration;*/
 }
 #endif
 

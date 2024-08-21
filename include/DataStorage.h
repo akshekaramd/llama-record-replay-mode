@@ -19,6 +19,7 @@
 #define     SUCCESS_CODE    2
 
 extern bool token_generation_phase_has_started;	// AK - Addition
+extern uint32_t    gemv_iteration;
 
 // Define the struct with the specified members
 struct DataStruct {

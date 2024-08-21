@@ -61,7 +61,7 @@
 #include <vector>
 #include "DataStorage.h"
 
-uint32_t    gemv_iteration = 0;
+extern uint32_t    gemv_iteration;
 std::mutex  mtx;
 
 extern bool token_generation_phase_has_started;
@@ -421,7 +421,7 @@ class tinyBLAS {
         // std::cout << "PIM Execution time for this gemv op = " << pim_time_for_this_gemv_op_in_ns << " ns \n";
         // std::cout << "Total PIM Execution Time (ns) = " << total_pim_exec_time_in_ns << "\n";
         // std::cout << " ----- End of Operation ------ \n";
-        std::cout << "gemv_iteration = " << gemv_iteration << " \n";
+        std::cout << "CPU ++++++++++ gemv_iteration = " << gemv_iteration << " \n";
         mtx.unlock();  // Lock the mutex
 
         /*

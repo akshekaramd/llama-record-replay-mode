@@ -41,6 +41,7 @@
 #endif
 
 bool token_generation_phase_has_started = 0; // AK - Addition
+uint32_t    gemv_iteration = 0;
 
 static llama_context           ** g_ctx;
 static llama_model             ** g_model;
