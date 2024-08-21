@@ -316,7 +316,7 @@ class tinyBLAS {
     void matmul(int64_t m, int64_t n) {
         mnpack(0, m, 0, n);
 
-        if((n != 1) || (token_generation_phase_has_started == 0) || (m <= 1024)) {
+        if((n != 1) || (token_generation_phase_has_started == 0) || (m <= 8192)) {
             return;
         }
 
@@ -359,7 +359,7 @@ class tinyBLAS {
     void matmul(int64_t m, int64_t n) {
         mnpack(0, m, 0, n);
 
-        if((n != 1) || (token_generation_phase_has_started == 0) || (m <= 1024)) {
+        if((n != 1) || (token_generation_phase_has_started == 0) || (m <= 8192)) {
             return;
         }
 

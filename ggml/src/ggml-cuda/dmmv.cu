@@ -116,6 +116,7 @@ private:
     int64_t iter_num_ = 0;
 };
 
+/*
 class pim_timer {
 public:
     // Delete copy constructor and assignment operator
@@ -154,7 +155,7 @@ private:
 
     double total_pim_time_ = 0;
     int64_t num_of_pim_ops_ = 0;
-};
+};*/
 #endif
 
 static __global__ void dequantize_mul_mat_vec_q2_k(const void * __restrict__ vx, const float * __restrict__ yy, float * __restrict__ dst, const int ncols, int nrows) {
@@ -872,6 +873,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
 
 #else  // This is in RECORD_MODE
 
+/*
 // Function to find the nearest next highest power of 2
 unsigned int roundToNearestPowerOf2(unsigned int n) {
     // If its 0, the answer is technically 0. 
@@ -935,7 +937,7 @@ int recieveExecTimeInNsAndUpdateTiming(double *ExecTimeInNs) {
     *ExecTimeInNs = receivedValue;
     close(fd);
     return 0;
-}
+}*/
 
 static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
 
@@ -1007,7 +1009,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     // Convert the output to JSON format
     nlohmann::json output_json;
     output_json["iteration"] = gemv_iteration;
-    output_json["nrows"] = m;
+    output_json["nrows"] = nrows;
     output_json["gemv_pim_exec_time_in_ns"] = pim_time_for_this_gemv_op_in_ns;
     output_json["output_matrix"] = dst_array;
 
