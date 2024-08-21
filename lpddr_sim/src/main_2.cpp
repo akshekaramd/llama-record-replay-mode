@@ -4,6 +4,9 @@
 #include <unistd.h>
 #include <array>
 
+#define     ERROR_CODE      1
+#define     SUCCESS_CODE    2
+
 using namespace PimSim;
 
 /*
@@ -89,7 +92,7 @@ int recieve_dimension_args(unsigned& input_dim_arg, unsigned& output_dim_arg) {
 
     if (fd == -1) {
         perror("Failed to open named pipe");
-        return 1;
+        return ERROR_CODE;
     }
     while (true) {
         ssize_t bytes_read = read(fd, recvd_args.data(), recvd_args.size() * sizeof(int));
@@ -99,7 +102,7 @@ int recieve_dimension_args(unsigned& input_dim_arg, unsigned& output_dim_arg) {
             output_dim_arg = (unsigned) recvd_args[1];
 
             // Exit after recieving the two args
-            return 0;
+            return SUCCESS_CODE;
         } else if (bytes_read == 0) {
             // End of file, wait for more data
             sleep(1);
@@ -122,7 +125,7 @@ int send_exec_time(double execution_time) {
     int fd = open(fifoPath, O_WRONLY);
     if (fd == -1) {
         perror("Failed to open named pipe");
-        return 1;
+        return ERROR_CODE;
     }
 
     // Write the double value to the named pipe
@@ -130,13 +133,13 @@ int send_exec_time(double execution_time) {
     if (bytes_written == -1) {
         perror("Failed to write to named pipe");
         close(fd);
-        return 1;
+        return ERROR_CODE;
     }
 
     std::cout << "Sent: " << execution_time << std::endl;
 
     close(fd);
-    return 0;
+    return SUCCESS_CODE;
 }
 
 int main()
@@ -144,7 +147,7 @@ int main()
     unsigned input_dimension_arg, output_dimension_arg;
     int ret_value = 1;
     int num_matmuls_invoked = 0;
-    double execTimeInNs = 0;
+    double execTimeInNsForThisGemvOp = 0;
     double temp_execTimeInNs = 0;
     double totalExecTimeInNs = 0;
     std::map<std::pair<unsigned, unsigned>, double> dim_kv_table;
@@ -154,7 +157,7 @@ int main()
         // Recieve Args from the Llama file
         ret_value = recieve_dimension_args(input_dimension_arg, output_dimension_arg);
 
-        if (ret_value == 1) {
+        if (ret_value != SUCCESS_CODE) {
             std::cout << "Some error in reciveing dimension args from llama.c. Simulator exiting \n";
             exit(0);
         }
@@ -163,29 +166,28 @@ int main()
         std::pair<unsigned, unsigned> dim_key = std::make_pair(input_dimension_arg, output_dimension_arg);
 
         bool lookup_result;
-        execTimeInNs = lookup_dim_value_table(dim_kv_table, dim_key, lookup_result);
+        execTimeInNsForThisGemvOp = lookup_dim_value_table(dim_kv_table, dim_key, lookup_result);
 
         // If found, then just write the exec time (value) into the FIFO file
         if(lookup_result == true) {
-            std::cout << "This value of <" << input_dimension_arg << ", " << output_dimension_arg << "> is already found. Using CACHED results ... \n";
+            std::cout << "This value of <" << input_dimension_arg << ", " << output_dimension_arg << "> is already found. Using CACHED results. WAIT YOU SHOULDNT BE HERE!!!!!!!!!!!!!!!!!!! ... \n";
         }
         else {
             std::cout << "--> Value not found in the lookup table... Running actual simulation! \n";
-            execTimeInNs = doGemVOpAndGetExecTime(input_dimension_arg, output_dimension_arg, "../ini/LPDDR5X-8533_1P1B.ini");
-            std::cout << "****** Num Of Matmuls Invoked=" << num_matmuls_invoked << " and Exec_Time(ns)=" << execTimeInNs << " ****** \n";
+            double totalPimSimexecTimeInNs = doGemVOpAndGetExecTime(input_dimension_arg, output_dimension_arg, "../ini/LPDDR5X-8533_1P1B.ini");
+            std::cout << "****** Num Of Matmuls Invoked=" << num_matmuls_invoked << " and Exec_Time(ns)=" << totalPimSimexecTimeInNs << " ****** \n";
 
             // Add this new dimension values into the lookup table
-            // Generally the previous instance of execTimeInNs in this code block holds total ExecTime. 
-            // After sending it through the addNewSimResultToTable(), we get ExecTime (ns) for this specific invocation.
-            // execTimeInNs would be equal to the execution time for this specific invovation.
-            execTimeInNs = addNewSimResultToTable(dim_kv_table, execTimeInNs, input_dimension_arg, output_dimension_arg);
+            // Generally totalPimSimexecTimeInNs in this code block holds total ExecTime of all GEMV ops simulated in the PIM Simulator. 
+            // After sending it through the addNewSimResultToTable(), we get ExecTime (ns) for this specific GEMV op.
+            // execTimeInNsForThisGemvOp would be equal to the execution time for this specific invovation.
+            execTimeInNsForThisGemvOp = addNewSimResultToTable(dim_kv_table, totalPimSimexecTimeInNs, input_dimension_arg, output_dimension_arg);
         }
 
         //Send the Execution Time to the simulator
-        totalExecTimeInNs = totalExecTimeInNs + execTimeInNs;
-        send_exec_time(totalExecTimeInNs);
-        if(ret_value != 0) {
-            std::cout << "Some error in sending execution time to llama.c. Simulator exiting \n";
+        send_exec_time(execTimeInNsForThisGemvOp);
+        if(ret_value != SUCCESS_CODE) {
+            std::cout << "Some error in sending execution time to llama.cpp. Simulator exiting \n";
             exit(0);
         }
     }

@@ -260,71 +260,6 @@ template <> inline __m512 load(const ggml_fp16_t *p) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // FLOATING POINT MATRIX MULTIPLICATION
 
-// Function to find the nearest next highest power of 2
-unsigned int roundToNearestPowerOf2(unsigned int n) {
-    // If its 0, the answer is technically 0. 
-    // But the simulator only accepts powers of 2 as input.
-    // Hence, it should return 0 rather than an odd number. 
-    if (n == 0) return 0;
-    if (n == 1) return 2;
-
-    // If n is already a power of 2, return n
-    if (n && !(n & (n - 1))) {
-        return n;
-    }
-
-    // Otherwise, find the next power of 2
-    unsigned int power = 1;
-    while (power < n) {
-        power <<= 1;
-    }
-    
-    return power;
-}
-
-int send_dimension_args(int input_arg, int output_arg) {
-    printf("Sending inp=%d outp=%d to simulator \n", input_arg, output_arg);
-    int fd;
-    int send_packet[] = {input_arg, output_arg};
-
-    // Open the named pipe for writing
-    fd = open("/tmp/llama2simulator_dimesionArgs", O_WRONLY);
-
-    if (fd == -1) {
-        perror("Failed to open named pipe");
-        return 1;
-    }
-    write(fd, send_packet, sizeof(send_packet));
-    close(fd);
-    return 0;
-}
-
-int receiveExecTimeInNsAndUpdateTiming(double *ExecTimeInNs) {
-    const char* fifoPath = "/tmp/sim2llama_execTimeInNs";
-    double receivedValue;
-
-    // Open the named pipe for reading
-    int fd = open(fifoPath, O_RDONLY);
-    if (fd == -1) {
-        perror("Failed to open named pipe");
-        return 1;
-    }
-
-    // Read the double value from the named pipe
-    ssize_t bytes_read = read(fd, &receivedValue, sizeof(receivedValue));
-    if (bytes_read == -1) {
-        perror("Failed to read from named pipe");
-        close(fd);
-        return 1;
-    }
-
-    printf("Received: %f\n", receivedValue);
-
-    *ExecTimeInNs = receivedValue;
-    close(fd);
-    return 0;
-}
-
 class pim_timer {
 public:
     // Delete copy constructor and assignment operator
@@ -365,6 +300,7 @@ private:
     int64_t num_of_pim_ops_ = 0;
 };
 
+
 template <int KN, typename D, typename V, typename TA, typename TB, typename TC>
 class tinyBLAS {
   public:
@@ -376,16 +312,61 @@ class tinyBLAS {
         : A(A), B(B), C(C), k(k), lda(lda), ldb(ldb), ldc(ldc), ith(ith), nth(nth) {
     }
 
+#ifdef REPLAY_MODE
+    void matmul(int64_t m, int64_t n) {
+        mnpack(0, m, 0, n);
+
+        if((n != 1) || (token_generation_phase_has_started == 0) || (m <= 1024)) {
+            return;
+        }
+
+        // mtx.lock();  // Lock the mutex
+        // This function basically reads the json data stored in the memory into the dst output variable
+        // Obviously this function has a little bit of overhead while performing this copy. We need to account for this.
+        // The amount of time to sleep here = (total pim_time_for_this_gemv_op) - (total time consumed by this function)
+
+        // std::cout << "Processing gemv_iter = " << gemv_iteration << "\n";
+        auto start_time = std::chrono::high_resolution_clock::now();
+
+        // std::cout << " token_generation_phase_has_started = " << token_generation_phase_has_started << "\n";
+        const DataStruct& data = DataStorage::getInstance().getData(gemv_iteration);
+        // std::cout << "Iteration: " << data.iteration << std::endl;
+        // std::cout << "PIM Execution Time (ns): " << data.pim_execution_time_in_ns << std::endl;
+
+        uint32_t numOfElements = data.nrows;
+        // Copy nrows of elements starting from the desired index in the original array
+        std::copy(
+                data.output_result_matrix, 
+                data.output_result_matrix + numOfElements, 
+                C
+            );
+        ++gemv_iteration;
+        
+        auto end_time = std::chrono::high_resolution_clock::now();
+        double this_function_overhead_in_ns = std::chrono::duration<double, std::nano>(end_time - start_time).count();
+        double time_to_sleep_for_this_gemv_iter = data.pim_execution_time_in_ns - this_function_overhead_in_ns;
+
+        // Convert the double value to std::chrono::nanoseconds
+        std::chrono::nanoseconds sleep_duration(static_cast<long long>(time_to_sleep_for_this_gemv_iter));
+    
+        std::atomic_thread_fence(std::memory_order_acquire); 
+        std::this_thread::sleep_for(sleep_duration);
+        std::atomic_thread_fence(std::memory_order_release);
+        // mtx.unlock();  // Lock the mutex
+    }
+#else   // RECORD MODE
     // Vanilla Code
     void matmul(int64_t m, int64_t n) {
         mnpack(0, m, 0, n);
 
-        if((n != 1) && (token_generation_phase_has_started ==1)) {
+        if((n != 1) || (token_generation_phase_has_started == 0) || (m <= 1024)) {
             return;
         }
 
         mtx.lock();  // Lock the mutex
-        int ret_value = 1;
+        double pim_time_for_this_gemv_op_in_ns = simulate_gemv_on_pim(n, m);
+
+        /*int ret_value = 1;
         pim_timer& pim_timer_obj = pim_timer::getInstance();
 
         // Now send the args to the simulator
@@ -410,7 +391,7 @@ class tinyBLAS {
         double pim_time_for_this_gemv_op_in_ns = total_pim_exec_time_in_ns - pim_timer_obj.getTotalElapsedTime();
         
         // Now update the pim_timer_obj to store the total time spent on PIM execution so far
-        pim_timer_obj.update_timer(total_pim_exec_time_in_ns);
+        pim_timer_obj.update_timer(total_pim_exec_time_in_ns);*/
 
         std::vector<float> dst_array;  // Replace 1024 with the appropriate size
 
@@ -436,10 +417,11 @@ class tinyBLAS {
         // compare_results(dst, gemv_iteration, nrows);
         ++gemv_iteration;
 
-        std::cout << "m=" << m << " n=" << n << "\n";
-        std::cout << "PIM Execution time for this gemv op = " << pim_time_for_this_gemv_op_in_ns << " ns \n";
-        std::cout << "Total PIM Execution Time (ns) = " << total_pim_exec_time_in_ns << "\n";
-        std::cout << " ----- End of Operation ------ \n";
+        // std::cout << "m=" << m << " n=" << n << "\n";
+        // std::cout << "PIM Execution time for this gemv op = " << pim_time_for_this_gemv_op_in_ns << " ns \n";
+        // std::cout << "Total PIM Execution Time (ns) = " << total_pim_exec_time_in_ns << "\n";
+        // std::cout << " ----- End of Operation ------ \n";
+        std::cout << "gemv_iteration = " << gemv_iteration << " \n";
         mtx.unlock();  // Lock the mutex
 
         /*
@@ -456,6 +438,7 @@ class tinyBLAS {
         // Pass the string to the function that prints it
         print_message(result);*/
     }
+#endif  // REPLAY_MODE
 
     /*// Vanilla code
     void matmul(int64_t m, int64_t n) {
@@ -1112,6 +1095,7 @@ bool llamafile_sgemm(int64_t m, int64_t n, int64_t k, const void *A, int64_t lda
     }
 
     case GGML_TYPE_F16: {
+        
 #if defined(__AVX512F__)
         if (k % 16)
             return false;
