@@ -812,8 +812,8 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     uint32_t numOfElements = data.nrows;
     // Copy nrows of elements starting from the desired index in the original array
     std::copy(
-            data.output_result_matrix, 
-            data.output_result_matrix + numOfElements, 
+            data.output_result_matrix.begin(), 
+            data.output_result_matrix.begin() + numOfElements, 
             dst
         );
     ++gemv_iteration;

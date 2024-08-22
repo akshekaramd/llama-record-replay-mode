@@ -336,8 +336,8 @@ class tinyBLAS {
         uint32_t numOfElements = data.nrows;
         // Copy nrows of elements starting from the desired index in the original array
         std::copy(
-                data.output_result_matrix, 
-                data.output_result_matrix + numOfElements, 
+                data.output_result_matrix.begin(), 
+                data.output_result_matrix.begin() + numOfElements, 
                 C
             );
         ++gemv_iteration;
