@@ -73,9 +73,10 @@ void populateDataFromJson() {
         // data.output_matrix_size = j["output_matrix_size"].get<uint32_t>();
 
         // Copy the output_result_matrix array from JSON
-        auto output_result_matrix = j["output_matrix"].get<std::vector<float>>();
-        data.output_matrix_size = output_result_matrix.size();
-        std::memcpy(data.output_result_matrix, output_result_matrix.data(), output_result_matrix.size() * sizeof(float));
+        // auto output_result_matrix = j["output_matrix"].get<std::vector<float>>();
+        data.output_result_matrix = j["output_matrix"].get<std::vector<float>>();
+        // data.output_matrix_size = output_result_matrix.size();
+        // std::memcpy(data.output_result_matrix, output_result_matrix.data(), output_result_matrix.size() * sizeof(float));
 
         // Add the populated DataStruct to the DataStorage singleton
         DataStorage::getInstance().addData(data);
