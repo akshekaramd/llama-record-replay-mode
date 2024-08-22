@@ -1003,7 +1003,7 @@ int main(int argc, char ** argv) {
     }
     auto end_time = std::chrono::high_resolution_clock::now();
     auto total_elapsed_time = std::chrono::duration<double, std::milli>(end_time - start_time).count();
-    std::cout << " AK --------> Total Token Generation Time = " << total_elapsed_time << " ms\n";
+    std::cout << "\n\n AK --------> Total Token Generation Time = " << total_elapsed_time << " ms\n";
 
     if (!path_session.empty() && params.prompt_cache_all && !params.prompt_cache_ro) {
         LOG_TEE("\n%s: saving final output to session file '%s'\n", __func__, path_session.c_str());
