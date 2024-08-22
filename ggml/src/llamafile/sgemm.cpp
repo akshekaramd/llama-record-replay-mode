@@ -346,6 +346,13 @@ class tinyBLAS {
         double this_function_overhead_in_ns = std::chrono::duration<double, std::nano>(end_time - start_time).count();
         double time_to_sleep_for_this_gemv_iter = data.pim_execution_time_in_ns - this_function_overhead_in_ns;
 
+        if(time_to_sleep_for_this_gemv_iter < 0) {
+            // If function_overhead > pim_execution_time, then you encounter a negative sleep value
+            // In this case, there is nothing much one can do except sleep for 0 ns and get out. 
+            // Results will be off by a small value. But this should not change the end-to-end numbers majorly.
+            time_to_sleep_for_this_gemv_iter = 0;
+        }
+
         // Convert the double value to std::chrono::nanoseconds
         std::chrono::nanoseconds sleep_duration(static_cast<long long>(time_to_sleep_for_this_gemv_iter));
     
