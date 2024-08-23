@@ -367,16 +367,17 @@ class tinyBLAS {
 #else   // RECORD MODE
     // Vanilla Code
     void matmul(int64_t m, int64_t n) {
-        ExecutionTimer& timer = ExecutionTimer::getInstance();
-        mtx.lock();  // Lock the mutex
+        
         if((n != 1) || (token_generation_phase_has_started == 0) || (m <= 8192)) {
             mnpack(0, m, 0, n);
             mtx.unlock();  // Unlock the mutex
             return;
         } else {
-            timer.startTimer("GEMV Timer");
+            ExecutionTimer& timer = ExecutionTimer::getInstance();
+            mtx.lock();  // Lock the mutex
+            timer.startTimer("CPU GEMV Timer");
             mnpack(0, m, 0, n);
-            timer.updateTimer("GEMV Timer");
+            timer.updateTimer("CPU GEMV Timer");
         }
 
         double pim_time_for_this_gemv_op_in_ns = simulate_gemv_on_pim(n, m);

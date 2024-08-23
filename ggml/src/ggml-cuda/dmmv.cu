@@ -744,7 +744,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     // gemv_timer.start();
 
     ExecutionTimer& timer = ExecutionTimer::getInstance();
-    timer.startTimer("GEMV Timer");
+    timer.startTimer("GPU GEMV Timer");
     GGML_ASSERT(ncols % (GGML_CUDA_DMMV_X*2) == 0);
     const int block_num_y = (nrows + GGML_CUDA_MMV_Y - 1) / GGML_CUDA_MMV_Y;
     const dim3 block_nums(block_num_y, 1, 1);
@@ -753,7 +753,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
         <<<block_nums, block_dims, 0, stream>>>(vx, y, dst, ncols, nrows);
     
     cudaDeviceSynchronize();
-    timer.updateTimer("GEMV Timer");
+    timer.updateTimer("GPU GEMV Timer");
 
     // Simulate with these dimensions on PIM 
     double pim_time_for_this_gemv_op_in_ns = simulate_gemv_on_pim(ncols, nrows);
