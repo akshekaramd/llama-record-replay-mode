@@ -604,7 +604,7 @@ static void dequantize_mul_mat_vec_q6_K_cuda(const void * vx, const float * y, f
 
 // This is only used for debugging
 void compare_results(float *gpu_result, uint32_t iteration_number, int nrows) {
-    std::string filename = "record_mode/output_" + std::to_string(gemv_iteration) + ".json";
+    std::string filename = "saved_values/output_" + std::to_string(gemv_iteration) + ".json";
     // std::cout << " Reading " << filename << " ... \n";
 
     // Open the JSON file
@@ -774,7 +774,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     output_json["output_matrix"] = dst_array;
 
     // Load existing JSON data (if any) to preserve previous iterations
-    std::string output_filename = "record_mode/output_" + std::to_string(gemv_iteration) + ".json";
+    std::string output_filename = "saved_values/output_" + std::to_string(gemv_iteration) + ".json";
 
     // Write to a JSON file
     std::ofstream outfile(output_filename);

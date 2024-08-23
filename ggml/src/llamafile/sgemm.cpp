@@ -389,7 +389,7 @@ class tinyBLAS {
         output_json["output_matrix"] = dst_array;
 
         // Load existing JSON data (if any) to preserve previous iterations
-        std::string output_filename = "record_mode/output_" + std::to_string(gemv_iteration) + ".json";
+        std::string output_filename = "saved_values/output_" + std::to_string(gemv_iteration) + ".json";
 
         // Write to a JSON file
         std::ofstream outfile(output_filename);

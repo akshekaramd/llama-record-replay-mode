@@ -47,7 +47,7 @@ bool fileExists(const std::string& filename) {
 void populateDataFromJson() {
     size_t index = 0;
     while (true) {
-        std::string filename = "record_mode/output_" + std::to_string(index) + ".json";
+        std::string filename = "saved_values/output_" + std::to_string(index) + ".json";
 
         // Check if the file exists
         if (!fileExists(filename)) {
