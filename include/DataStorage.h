@@ -12,6 +12,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <cstring>
+#include <map>
+#include <chrono>
 
 #include "../ggml/include/ggml.h"
 
@@ -99,5 +101,51 @@ private:
 
     double total_pim_time_ = 0;
     int64_t num_of_pim_ops_ = 0;
+};
+
+class ExecutionTimer {
+public:
+    // Get the singleton instance
+    static ExecutionTimer& getInstance() {
+        static ExecutionTimer instance;
+        return instance;
+    }
+
+    // Delete copy constructor and assignment operator to prevent copying
+    ExecutionTimer(const ExecutionTimer&) = delete;
+    ExecutionTimer& operator=(const ExecutionTimer&) = delete;
+
+    // Start or reset a timer with the given name
+    void startTimer(const std::string& timerName) {
+        timers[timerName] = std::chrono::steady_clock::now();
+    }
+
+    // Update the timer with the given name
+    void updateTimer(const std::string& timerName) {
+        auto now = std::chrono::steady_clock::now();
+        if (elapsedTimes.find(timerName) != elapsedTimes.end()) {
+            elapsedTimes[timerName] += std::chrono::duration_cast<std::chrono::milliseconds>(now - timers[timerName]).count();
+        } else {
+            elapsedTimes[timerName] = std::chrono::duration_cast<std::chrono::milliseconds>(now - timers[timerName]).count();
+        }
+        timers[timerName] = now;
+    }
+
+    // Reset a timer to zero
+    void resetTimer(const std::string& timerName) {
+        elapsedTimes[timerName] = 0;
+    }
+
+    // Get the elapsed time for a given timer
+    long long getElapsedTime(const std::string& timerName) {
+        return elapsedTimes[timerName];
+    }
+
+private:
+    ExecutionTimer() = default;
+    ~ExecutionTimer() = default;
+
+    std::map<std::string, std::chrono::steady_clock::time_point> timers;
+    std::map<std::string, long long> elapsedTimes; // In nanoseconds
 };
 // #endif // DATA_STORAGE_H

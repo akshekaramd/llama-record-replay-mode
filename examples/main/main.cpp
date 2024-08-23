@@ -581,8 +581,8 @@ int main(int argc, char ** argv) {
     readDataFromMemory(0);
 #endif
 
-	token_generation_phase_has_started = 1;
-    auto start_time = std::chrono::high_resolution_clock::now();
+	ExecutionTimer& timer = ExecutionTimer::getInstance();
+    timer.startTimer("Token Generation Timer");
     while ((n_remain != 0 && !is_antiprompt) || params.interactive) {
         // predict
         if (!embd.empty()) {
@@ -1001,9 +1001,7 @@ int main(int argc, char ** argv) {
             is_interacting = true;
         }
     }
-    auto end_time = std::chrono::high_resolution_clock::now();
-    auto total_elapsed_time = std::chrono::duration<double, std::milli>(end_time - start_time).count();
-    std::cout << "\n\n AK --------> Total Token Generation Time = " << total_elapsed_time << " ms\n";
+    timer.updateTimer("Token Generation Timer");   
 
     if (!path_session.empty() && params.prompt_cache_all && !params.prompt_cache_ro) {
         LOG_TEE("\n%s: saving final output to session file '%s'\n", __func__, path_session.c_str());
@@ -1011,10 +1009,15 @@ int main(int argc, char ** argv) {
     }
 
     llama_print_timings(ctx);
+    std::cout << "Token Generation Timer: " << timer.getElapsedTime("Token Generation Timer") << " ms" << std::endl;
+
+
 #ifdef REPLAY_MODE
     std::cout << "\nThis output was from the REPLAY_MODE\n";
+    std::cout << "PIM Timer: " << timer.getElapsedTime("PIM Timer") << " ms" << std::endl;
 #else
     std::cout << "\nOutputs recorded to saved_values/ \n";
+    std::cout << "GEMV Timer: " << timer.getElapsedTime("GEMV Timer") << " ms" << std::endl;
 #endif 
 
     write_logfile(ctx, params, model, input_tokens, output_ss.str(), output_tokens);

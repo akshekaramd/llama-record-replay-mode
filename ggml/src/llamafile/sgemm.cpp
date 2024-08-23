@@ -342,6 +342,7 @@ class tinyBLAS {
             );
         ++gemv_iteration;
         
+        ExecutionTimer& timer = ExecutionTimer::getInstance();
         auto end_time = std::chrono::high_resolution_clock::now();
         double this_function_overhead_in_ns = std::chrono::duration<double, std::nano>(end_time - start_time).count();
         double time_to_sleep_for_this_gemv_iter = data.pim_execution_time_in_ns - this_function_overhead_in_ns;
@@ -356,21 +357,28 @@ class tinyBLAS {
         // Convert the double value to std::chrono::nanoseconds
         std::chrono::nanoseconds sleep_duration(static_cast<long long>(time_to_sleep_for_this_gemv_iter));
     
-        std::atomic_thread_fence(std::memory_order_acquire); 
+        std::atomic_thread_fence(std::memory_order_acquire);
+        timer.startTimer("PIM Timer"); 
         std::this_thread::sleep_for(sleep_duration);
+        timer.updateTimer("PIM Timer");
         std::atomic_thread_fence(std::memory_order_release);
         mtx.unlock();  // Lock the mutex
     }
 #else   // RECORD MODE
     // Vanilla Code
     void matmul(int64_t m, int64_t n) {
-        mnpack(0, m, 0, n);
-
+        ExecutionTimer& timer = ExecutionTimer::getInstance();
+        mtx.lock();  // Lock the mutex
         if((n != 1) || (token_generation_phase_has_started == 0) || (m <= 8192)) {
+            mnpack(0, m, 0, n);
+            mtx.unlock();  // Unlock the mutex
             return;
+        } else {
+            timer.startTimer("GEMV Timer");
+            mnpack(0, m, 0, n);
+            timer.updateTimer("GEMV Timer");
         }
 
-        mtx.lock();  // Lock the mutex
         double pim_time_for_this_gemv_op_in_ns = simulate_gemv_on_pim(n, m);
 
 
@@ -399,8 +407,7 @@ class tinyBLAS {
         ++gemv_iteration;
 
         std::cout << "CPU ++++++++++ gemv_iteration = " << gemv_iteration << " \n";
-        mtx.unlock();  // Lock the mutex
-
+        mtx.unlock();  // Unlock the mutex
     }
 #endif  // REPLAY_MODE
 
