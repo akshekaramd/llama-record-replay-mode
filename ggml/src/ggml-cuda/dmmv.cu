@@ -640,8 +640,10 @@ void compare_results(float *gpu_result, uint32_t iteration_number, int nrows) {
 
 }
 
-#define     PROMPT_RESPONSE_PHASE_HAS_STARTED         1
-#define     PROMPT_RESPONSE_PHASE_HAS_NOT_STARTED     0
+#define     TOKEN_GENERATION_HAS_STARTED     1
+#define     TOKEN_GENERATION_NOT_STARTED     0
+
+#define     GPU_MINIMUM_OUTPUT_OFFLOAD_VECTOR_LENTH     1024   // For output vector dimension lower than this, we do not offload to PIM and run it on GPU
 
 #ifdef REPLAY_MODE
 static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
@@ -649,7 +651,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     
     // Execute the replay ops only for token generation phase
     // For rest of the ops, execute on the actual GPU
-    if(token_generation_phase_has_started == PROMPT_RESPONSE_PHASE_HAS_NOT_STARTED) {
+    if(token_generation_phase_has_started == TOKEN_GENERATION_NOT_STARTED) {
         GGML_ASSERT(ncols % (GGML_CUDA_DMMV_X*2) == 0);
         const int block_num_y = (nrows + GGML_CUDA_MMV_Y - 1) / GGML_CUDA_MMV_Y;
         const dim3 block_nums(block_num_y, 1, 1);
@@ -709,7 +711,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
 
     // Execute the replay ops only for token generation phase
     // For rest of the ops, execute on the actual GPU
-    if(token_generation_phase_has_started == PROMPT_RESPONSE_PHASE_HAS_NOT_STARTED) {
+    if(token_generation_phase_has_started == TOKEN_GENERATION_NOT_STARTED || nrows < GPU_MINIMUM_OUTPUT_OFFLOAD_VECTOR_LENTH) {
         GGML_ASSERT(ncols % (GGML_CUDA_DMMV_X*2) == 0);
         const int block_num_y = (nrows + GGML_CUDA_MMV_Y - 1) / GGML_CUDA_MMV_Y;
         const dim3 block_nums(block_num_y, 1, 1);
@@ -726,7 +728,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     // pim_timer& pim_timer_obj = pim_timer::getInstance();
 
     /*
-    if(prompt_response_phase_started == PROMPT_RESPONSE_PHASE_HAS_STARTED) { 
+    if(prompt_response_phase_started == TOKEN_GENERATION_HAS_STARTED) { 
 	// Reset the gemv_timer at this point since previous GEMV calls were for model loading phase,
         // prompt sampling phase and prompt evaluation phase.
         // Now the model will generate a response for the given prompt after parsing and 
@@ -737,7 +739,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
 
         // We reset the flag back to zero 
         // TODO - Can we document this better to avoid the confusion?
-        prompt_response_phase_started = PROMPT_RESPONSE_PHASE_HAS_NOT_STARTED;
+        prompt_response_phase_started = TOKEN_GENERATION_NOT_STARTED;
     }*/
 
     // gemv_plus_sim_timer.start();

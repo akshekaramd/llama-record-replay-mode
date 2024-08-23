@@ -300,6 +300,10 @@ private:
     int64_t num_of_pim_ops_ = 0;
 };
 
+#define     TOKEN_GENERATION_HAS_STARTED     1
+#define     TOKEN_GENERATION_NOT_STARTED     0
+
+#define     CPU_MINIMUM_OUTPUT_OFFLOAD_VECTOR_LENTH     1024   // For output vector dimension lower than this, we do not offload to PIM and run it on CPU
 
 template <int KN, typename D, typename V, typename TA, typename TB, typename TC>
 class tinyBLAS {
@@ -316,7 +320,7 @@ class tinyBLAS {
     void matmul(int64_t m, int64_t n) {
         mnpack(0, m, 0, n);
 
-        if((n != 1) || (token_generation_phase_has_started == 0) || (m <= 8192)) {
+        if((n != 1) || (token_generation_phase_has_started == TOKEN_GENERATION_NOT_STARTED) || (m <= 8192)) {
             return;
         }
 
@@ -368,7 +372,7 @@ class tinyBLAS {
     // Vanilla Code
     void matmul(int64_t m, int64_t n) {
         
-        if((n != 1) || (token_generation_phase_has_started == 0) || (m <= 8192)) {
+        if((n != 1) || (token_generation_phase_has_started == TOKEN_GENERATION_NOT_STARTED) || (m <= 8192)) {
             mnpack(0, m, 0, n);
             mtx.unlock();  // Unlock the mutex
             return;
