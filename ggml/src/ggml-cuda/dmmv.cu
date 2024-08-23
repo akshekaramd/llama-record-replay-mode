@@ -116,46 +116,6 @@ private:
     int64_t iter_num_ = 0;
 };
 
-/*
-class pim_timer {
-public:
-    // Delete copy constructor and assignment operator
-    pim_timer(const pim_timer&) = delete;
-    pim_timer& operator=(const pim_timer&) = delete;
-
-    static pim_timer& getInstance() {
-        static pim_timer instance;
-        return instance;
-    }
-
-    void reset() {
-        total_pim_time_ = 0;
-    }
-
-    void update_timer(double new_total_pim_time) {
-        total_pim_time_ = new_total_pim_time;
-
-        // If you are updating the timer, that indicates a new PIM execution
-        // has taken place, hence we increase the num_of_pim_ops_ value
-        ++num_of_pim_ops_;
-    }
-
-    double getTotalElapsedTime() {
-        return total_pim_time_;
-    }
-
-    int64_t get_num_of_pim_ops() {
-        return num_of_pim_ops_;
-    }
-
-private:
-    pim_timer() : total_pim_time_(0.0) {
-        total_pim_time_ = 0;
-    }
-
-    double total_pim_time_ = 0;
-    int64_t num_of_pim_ops_ = 0;
-};*/
 #endif
 
 static __global__ void dequantize_mul_mat_vec_q2_k(const void * __restrict__ vx, const float * __restrict__ yy, float * __restrict__ dst, const int ncols, int nrows) {
@@ -773,10 +733,6 @@ void compare_results(float *gpu_result, uint32_t iteration_number, int nrows) {
         }
     }
 
-    // std::vector<float> final_output_matrix(output_matrix.begin(), output_matrix.end());
-
-    // Copy the contents of output_matrix to dst
-    // std::copy(final_output_matrix.begin(), final_output_matrix.end(), dst);
 }
 
 #define     PROMPT_RESPONSE_PHASE_HAS_STARTED         1
@@ -836,114 +792,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     std::atomic_thread_fence(std::memory_order_release);
 }
 
-/* // Old Verson of the code
-static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
-    cudaDeviceSynchronize();
-    
-    std::string filename = "record_mode/output_" + std::to_string(gemv_iteration) + ".json";
-    // std::cout << " Reading " << filename << " ... \n";
-
-    // Open the JSON file
-    std::ifstream input_file(filename);
-    if (!input_file.is_open()) {
-        std::cerr << "Error opening JSON file: " << filename << std::endl;
-        return;
-    }
-
-    // Parse the JSON file
-    nlohmann::json j;
-    input_file >> j;
-
-    int json_nrows = j["nrows"].get<int>();
-
-    // Check if "output_matrix" exists and read it into a vector
-    if (!j.contains("output_matrix")) {
-        std::cerr << "\"output_matrix\" key not found in JSON file: " << filename << std::endl;
-        return;
-    }
-
-    std::vector<float> output_matrix = j["output_matrix"].get<std::vector<float>>();
-
-    // Ensure that the dimensions match the expected ncols and nrows
-    if (output_matrix.size() != static_cast<size_t>(nrows)) {
-        std::cerr << "Size mismatch between output_matrix and expected dimensions." << std::endl;
-        return;
-    }
-
-    // std::vector<float> final_output_matrix(output_matrix.begin(), output_matrix.end());
-
-    // Copy the contents of output_matrix to dst
-    std::copy(output_matrix.begin(), output_matrix.end(), dst);
-    ++gemv_iteration;
-}*/
-
 #else  // This is in RECORD_MODE
-
-/*
-// Function to find the nearest next highest power of 2
-unsigned int roundToNearestPowerOf2(unsigned int n) {
-    // If its 0, the answer is technically 0. 
-    // But the simulator only accepts powers of 2 as input.
-    // Hence, it should return 0 rather than an odd number. 
-    if (n == 0) return 0;
-    if (n == 1) return 2;
-
-    // If n is already a power of 2, return n
-    if (n && !(n & (n - 1))) {
-        return n;
-    }
-
-    // Otherwise, find the next power of 2
-    unsigned int power = 1;
-    while (power < n) {
-        power <<= 1;
-    }
-    
-    return power;
-}
-
-int send_dimension_args(int input_arg, int output_arg) {
-    printf("Sending inp=%d outp=%d to simulator \n", input_arg, output_arg);
-    int fd;
-    int send_packet[] = {input_arg, output_arg};
-
-    // Open the named pipe for writing
-    fd = open("/tmp/llama2simulator_dimesionArgs", O_WRONLY);
-
-    if (fd == -1) {
-        perror("Failed to open named pipe");
-        return 1;
-    }
-    write(fd, send_packet, sizeof(send_packet));
-    close(fd);
-    return 0;
-}
-
-int recieveExecTimeInNsAndUpdateTiming(double *ExecTimeInNs) {
-    const char* fifoPath = "/tmp/sim2llama_execTimeInNs";
-    double receivedValue;
-
-    // Open the named pipe for reading
-    int fd = open(fifoPath, O_RDONLY);
-    if (fd == -1) {
-        perror("Failed to open named pipe");
-        return 1;
-    }
-
-    // Read the double value from the named pipe
-    ssize_t bytes_read = read(fd, &receivedValue, sizeof(receivedValue));
-    if (bytes_read == -1) {
-        perror("Failed to read from named pipe");
-        close(fd);
-        return 1;
-    }
-
-    printf("Received: %f\n", receivedValue);
-
-    *ExecTimeInNs = receivedValue;
-    close(fd);
-    return 0;
-}*/
 
 static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
 

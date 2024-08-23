@@ -373,32 +373,6 @@ class tinyBLAS {
         mtx.lock();  // Lock the mutex
         double pim_time_for_this_gemv_op_in_ns = simulate_gemv_on_pim(n, m);
 
-        /*int ret_value = 1;
-        pim_timer& pim_timer_obj = pim_timer::getInstance();
-
-        // Now send the args to the simulator
-        ret_value = send_dimension_args(
-                        roundToNearestPowerOf2(n),
-                        roundToNearestPowerOf2(m)
-            );
-        
-        if(ret_value != 0) {
-            printf("Error in sending dimension args to simulator. Exiting \n");
-            exit(0);
-        }
-
-        // Recieve the exec time from the simulator
-        double total_pim_exec_time_in_ns = 0;
-        ret_value = receiveExecTimeInNsAndUpdateTiming(&total_pim_exec_time_in_ns);
-        if(ret_value != 0) {
-            printf("Error in Recieving Execution Time from simulator. Exiting \n");
-            exit(0);
-        }
-
-        double pim_time_for_this_gemv_op_in_ns = total_pim_exec_time_in_ns - pim_timer_obj.getTotalElapsedTime();
-        
-        // Now update the pim_timer_obj to store the total time spent on PIM execution so far
-        pim_timer_obj.update_timer(total_pim_exec_time_in_ns);*/
 
         std::vector<float> dst_array;  // Replace 1024 with the appropriate size
 
@@ -424,30 +398,13 @@ class tinyBLAS {
         // compare_results(dst, gemv_iteration, nrows);
         ++gemv_iteration;
 
-        // std::cout << "m=" << m << " n=" << n << "\n";
-        // std::cout << "PIM Execution time for this gemv op = " << pim_time_for_this_gemv_op_in_ns << " ns \n";
-        // std::cout << "Total PIM Execution Time (ns) = " << total_pim_exec_time_in_ns << "\n";
-        // std::cout << " ----- End of Operation ------ \n";
         std::cout << "CPU ++++++++++ gemv_iteration = " << gemv_iteration << " \n";
         mtx.unlock();  // Lock the mutex
 
-        /*
-        // Print the resultant vector C
-        std::string result = "Resultant C: [";
-        for (int64_t i = 0; i < ldc * n; ++i) {
-            result += std::to_string(C[i]);
-            if (i < ldc * n - 1) {
-                result += ", ";
-            }
-        }
-        result += "]";
-
-        // Pass the string to the function that prints it
-        print_message(result);*/
     }
 #endif  // REPLAY_MODE
 
-    /*// Vanilla code
+    /*// Vanilla Unchanged code
     void matmul(int64_t m, int64_t n) {
         mnpack(0, m, 0, n);
     }*/
