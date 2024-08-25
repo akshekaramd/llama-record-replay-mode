@@ -1022,14 +1022,14 @@ int main(int argc, char ** argv) {
     std::cout << "GPU REPLAYED GEMV OPS \t= " << execution_stats_obj.read_gemv_counter("REPLAYED GPU GEMV OPS") << "\n";
     std::cout << "GPU GEMV OPS NOT RECORDED \t= " << execution_stats_obj.read_gemv_counter("GPU GEMV OPS NOT RECORDED") << "\n";
     std::cout << "GPU RECORDED GEMV OPS \t= " << execution_stats_obj.read_gemv_counter("RECORDED GPU GEMV OPS") << "\n";
-    std::cout << "GPU GEMV Timer \t= " << execution_stats_obj.getElapsedTime("CPU GEMV Timer") 
+    std::cout << "GPU GEMV Timer \t\t\t= " << execution_stats_obj.getElapsedTime("CPU GEMV Timer") 
                 << "\t\t Time spent on GEMV ops that would be offloaded to PIM \n\n";
 
     std::cout << "CPU GEMV OPS NOT REPLAYED \t= " << execution_stats_obj.read_gemv_counter("CPU GEMV OPS NOT REPLAYED") << "\n";
-    std::cout << "CPU GEMV OPS REPLAYED \t= " << execution_stats_obj.read_gemv_counter("CPU GEMV OPS REPLAYED") << "\n";
+    std::cout << "CPU GEMV OPS REPLAYED \t\t= " << execution_stats_obj.read_gemv_counter("CPU GEMV OPS REPLAYED") << "\n";
     std::cout << "CPU GEMV OPS NOT RECORDED \t= " << execution_stats_obj.read_gemv_counter("CPU GEMV OPS NOT RECORDED") << "\n";
-    std::cout << "CPU GEMV OPS RECORDED \t= " << execution_stats_obj.read_gemv_counter("CPU GEMV OPS RECORDED") << "\n";
-    std::cout << "GPU GEMV Timer \t= " << execution_stats_obj.getElapsedTime("GPU GEMV Timer")
+    std::cout << "CPU GEMV OPS RECORDED \t\t= " << execution_stats_obj.read_gemv_counter("CPU GEMV OPS RECORDED") << "\n";
+    std::cout << "GPU GEMV Timer \t\t\t= " << execution_stats_obj.getElapsedTime("GPU GEMV Timer")
                 << "\t\t Time spent on GEMV ops that would be offloaded to PIM \n\n";
 
 #ifdef REPLAY_MODE
