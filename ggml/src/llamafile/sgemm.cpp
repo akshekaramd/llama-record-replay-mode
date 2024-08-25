@@ -308,7 +308,6 @@ class tinyBLAS {
             );
         ++gemv_iteration;
         
-        ExecutionStats& execution_stats_obj = ExecutionStats::getInstance();
         execution_stats_obj.increment_gemv_counter("CPU GEMV OPS REPLAYED");
         auto end_time = std::chrono::high_resolution_clock::now();
         double this_function_overhead_in_ns = std::chrono::duration<double, std::nano>(end_time - start_time).count();
