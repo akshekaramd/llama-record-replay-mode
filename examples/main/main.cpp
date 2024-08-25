@@ -1013,15 +1013,13 @@ int main(int argc, char ** argv) {
     }
 
     llama_print_timings(ctx);
-    std::cout << "\n Token Generation Timer \t= " << execution_stats_obj.getElapsedTime("Token Generation Timer") << " ms \n";
-    std::cout << "GPU GEMV Timer \t\t= " << execution_stats_obj.getElapsedTime("GPU GEMV Timer") << " ms \n";
-    std::cout << "CPU GEMV Timer \t\t=: " << execution_stats_obj.getElapsedTime("CPU GEMV Timer") << " ms \n";
-    std::cout << "PIM Timer \t\t= " << execution_stats_obj.getElapsedTime("PIM Timer") << " ms \n";
+    std::cout << "\nToken Generation Timer \t= " << execution_stats_obj.getElapsedTime("Token Generation Timer") << " ms \n";
+    std::cout << "PIM Timer \t\t\t= " << execution_stats_obj.getElapsedTime("PIM Timer") << " ms \n\n";
     
     std::cout << "GPU GEMV OPS NOT REPLAYED \t= " << execution_stats_obj.read_gemv_counter("GPU GEMV OPS NOT REPLAYED") << "\n";
-    std::cout << "GPU REPLAYED GEMV OPS \t= " << execution_stats_obj.read_gemv_counter("REPLAYED GPU GEMV OPS") << "\n";
+    std::cout << "GPU REPLAYED GEMV OPS \t\t= " << execution_stats_obj.read_gemv_counter("REPLAYED GPU GEMV OPS") << "\n";
     std::cout << "GPU GEMV OPS NOT RECORDED \t= " << execution_stats_obj.read_gemv_counter("GPU GEMV OPS NOT RECORDED") << "\n";
-    std::cout << "GPU RECORDED GEMV OPS \t= " << execution_stats_obj.read_gemv_counter("RECORDED GPU GEMV OPS") << "\n";
+    std::cout << "GPU RECORDED GEMV OPS \t\t= " << execution_stats_obj.read_gemv_counter("RECORDED GPU GEMV OPS") << "\n";
     std::cout << "GPU GEMV Timer \t\t\t= " << execution_stats_obj.getElapsedTime("CPU GEMV Timer") 
                 << "\t\t Time spent on GEMV ops that would be offloaded to PIM \n\n";
 
