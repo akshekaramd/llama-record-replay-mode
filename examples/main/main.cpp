@@ -1023,15 +1023,15 @@ int main(int argc, char ** argv) {
     std::cout << "GEMV Timer: " << execution_stats_obj.getElapsedTime("GEMV Timer") << " ms" << std::endl;
 #endif 
 
-    std::cout << "GPU GEMV OPS NOT REPLAYED = " << execution_stats_obj.read_gemv_counter("GPU GEMV OPS NOT REPLAYED") << "\n";
-    std::cout << "REPLAYED GPU GEMV OPS = " << execution_stats_obj.read_gemv_counter("REPLAYED GPU GEMV OPS") << "\n";
-    std::cout << "GPU GEMV OPS NOT RECORDED = " << execution_stats_obj.read_gemv_counter("GPU GEMV OPS NOT RECORDED") << "\n";
-    std::cout << "RECORDED GPU GEMV OPS = " << execution_stats_obj.read_gemv_counter("RECORDED GPU GEMV OPS") << "\n";
+    std::cout << "GPU GEMV OPS NOT REPLAYED \t= " << execution_stats_obj.read_gemv_counter("GPU GEMV OPS NOT REPLAYED") << "\n";
+    std::cout << "REPLAYED GPU GEMV OPS \t= " << execution_stats_obj.read_gemv_counter("REPLAYED GPU GEMV OPS") << "\n";
+    std::cout << "GPU GEMV OPS NOT RECORDED \t= " << execution_stats_obj.read_gemv_counter("GPU GEMV OPS NOT RECORDED") << "\n";
+    std::cout << "RECORDED GPU GEMV OPS \t= " << execution_stats_obj.read_gemv_counter("RECORDED GPU GEMV OPS") << "\n\n";
 
-    std::cout << "CPU GEMV OPS NOT REPLAYED = " << execution_stats_obj.read_gemv_counter("CPU GEMV OPS NOT REPLAYED") << "\n";
-    std::cout << "CPU GEMV OPS REPLAYED = " << execution_stats_obj.read_gemv_counter("CPU GEMV OPS REPLAYED") << "\n";
-    std::cout << "CPU GEMV OPS NOT RECORDED = " << execution_stats_obj.read_gemv_counter("CPU GEMV OPS NOT RECORDED") << "\n";
-    std::cout << "CPU GEMV OPS RECORDED = " << execution_stats_obj.read_gemv_counter("CPU GEMV OPS RECORDED") << "\n";
+    std::cout << "CPU GEMV OPS NOT REPLAYED \t= " << execution_stats_obj.read_gemv_counter("CPU GEMV OPS NOT REPLAYED") << "\n";
+    std::cout << "CPU GEMV OPS REPLAYED \t= " << execution_stats_obj.read_gemv_counter("CPU GEMV OPS REPLAYED") << "\n";
+    std::cout << "CPU GEMV OPS NOT RECORDED \t= " << execution_stats_obj.read_gemv_counter("CPU GEMV OPS NOT RECORDED") << "\n";
+    std::cout << "CPU GEMV OPS RECORDED \t= " << execution_stats_obj.read_gemv_counter("CPU GEMV OPS RECORDED") << "\n\n";
 
     write_logfile(ctx, params, model, input_tokens, output_ss.str(), output_tokens);
 
