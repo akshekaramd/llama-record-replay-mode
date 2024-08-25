@@ -1013,7 +1013,10 @@ int main(int argc, char ** argv) {
     }
 
     llama_print_timings(ctx);
-    std::cout << "Token Generation Timer: " << execution_stats_obj.getElapsedTime("Token Generation Timer") << " ms \n\n";
+    std::cout << "\n Token Generation Timer \t= " << execution_stats_obj.getElapsedTime("Token Generation Timer") << " ms \n";
+    std::cout << "GPU GEMV Timer \t\t= " << execution_stats_obj.getElapsedTime("GPU GEMV Timer") << " ms \n";
+    std::cout << "CPU GEMV Timer \t\t=: " << execution_stats_obj.getElapsedTime("CPU GEMV Timer") << " ms \n";
+    std::cout << "PIM Timer \t\t= " << execution_stats_obj.getElapsedTime("PIM Timer") << " ms \n";
     
     std::cout << "GPU GEMV OPS NOT REPLAYED \t= " << execution_stats_obj.read_gemv_counter("GPU GEMV OPS NOT REPLAYED") << "\n";
     std::cout << "GPU REPLAYED GEMV OPS \t= " << execution_stats_obj.read_gemv_counter("REPLAYED GPU GEMV OPS") << "\n";
