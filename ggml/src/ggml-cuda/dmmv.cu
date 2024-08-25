@@ -648,6 +648,7 @@ void compare_results(float *gpu_result, uint32_t iteration_number, int nrows) {
 #ifdef REPLAY_MODE
 static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
     cudaDeviceSynchronize();
+    ExecutionStats& execution_stats_obj = ExecutionStats::getInstance();
     
     // Execute the replay ops only for token generation phase
     // For rest of the ops, execute on the actual GPU
@@ -682,7 +683,6 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
         );
     ++gemv_iteration;
     
-    ExecutionStats& execution_stats_obj = ExecutionStats::getInstance();
     execution_stats_obj.increment_gemv_counter("REPLAYED GPU GEMV OPS");
     auto end_time = std::chrono::high_resolution_clock::now();
     double this_function_overhead_in_ns = std::chrono::duration<double, std::nano>(end_time - start_time).count();
