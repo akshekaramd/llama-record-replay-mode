@@ -135,3 +135,4 @@ lol_log
 *llama-cli*
 *.nfs*
 *.swp
+saved_values/
