@@ -40,7 +40,10 @@
 #pragma warning(disable: 4244 4267) // possible loss of data
 #endif
 
-bool token_generation_phase_has_started = 0; // AK - Addition
+#define     TOKEN_GENERATION_HAS_STARTED     1
+#define     TOKEN_GENERATION_NOT_STARTED     0
+
+bool token_generation_phase_has_started = TOKEN_GENERATION_NOT_STARTED; // AK - Addition
 uint32_t    gemv_iteration = 0;
 
 static llama_context           ** g_ctx;
@@ -583,6 +586,7 @@ int main(int argc, char ** argv) {
 
 	ExecutionTimer& timer = ExecutionTimer::getInstance();
     timer.startTimer("Token Generation Timer");
+    token_generation_phase_has_started = TOKEN_GENERATION_HAS_STARTED;
     while ((n_remain != 0 && !is_antiprompt) || params.interactive) {
         // predict
         if (!embd.empty()) {
