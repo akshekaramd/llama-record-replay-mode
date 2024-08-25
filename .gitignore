@@ -130,3 +130,8 @@ poetry.toml
 !/scripts/install-oneapi.bat
 
 record_mode/
+run_1/
+lol_log
+*llama-cli*
+*.nfs*
+*.swp
