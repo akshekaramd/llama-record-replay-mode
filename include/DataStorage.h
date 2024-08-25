@@ -63,17 +63,17 @@ void populateDataFromJson();
 void readDataFromMemory(size_t index);
 double simulate_gemv_on_pim(int input_dimension_arg, int output_dimension_arg);
 
-class ExecutionTimer {
+class ExecutionStats {
 public:
     // Get the singleton instance
-    static ExecutionTimer& getInstance() {
-        static ExecutionTimer instance;
+    static ExecutionStats& getInstance() {
+        static ExecutionStats instance;
         return instance;
     }
 
     // Delete copy constructor and assignment operator to prevent copying
-    ExecutionTimer(const ExecutionTimer&) = delete;
-    ExecutionTimer& operator=(const ExecutionTimer&) = delete;
+    ExecutionStats(const ExecutionStats&) = delete;
+    ExecutionStats& operator=(const ExecutionStats&) = delete;
 
     // Start or reset a timer with the given name
     void startTimer(const std::string& timerName) {
@@ -101,11 +101,36 @@ public:
         return elapsedTimes[timerName];
     }
 
+    // Increment the counter
+    void increment_gemv_counter(const std::string& counter_name) {
+        // Check if the counter exists
+        if (gemv_counter.find(counter_name) == gemv_counter.end()) {
+            // Initialize the counter to 0 if it doesn't exist
+            gemv_counter[counter_name] = 0;
+        }
+
+        // Increment the counter
+        ++gemv_counter[counter_name];
+    }
+
+    // Reset the counter
+    void reset_gemv_counter(const std::string& counter_name) {
+        gemv_counter[counter_name] = 0;
+    }
+
+    // Read the counter value
+    uint64_t read_gemv_counter(const std::string& counter_name) {
+        return gemv_counter[counter_name];
+    }
+
 private:
-    ExecutionTimer() = default;
-    ~ExecutionTimer() = default;
+    ExecutionStats() = default;
+    ~ExecutionStats() = default;
 
     std::map<std::string, std::chrono::steady_clock::time_point> timers;
     std::map<std::string, long long> elapsedTimes; // In nanoseconds
+
+    // Following variables are used to keep track of number of GEMV ops
+    std::map<std::string, uint64_t> gemv_counter;
 };
 // #endif // DATA_STORAGE_H

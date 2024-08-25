@@ -584,8 +584,8 @@ int main(int argc, char ** argv) {
     readDataFromMemory(0);
 #endif
 
-	ExecutionTimer& timer = ExecutionTimer::getInstance();
-    timer.startTimer("Token Generation Timer");
+	ExecutionStats& execution_stats_obj = ExecutionStats::getInstance();
+    execution_stats_obj.startTimer("Token Generation Timer");
     token_generation_phase_has_started = TOKEN_GENERATION_HAS_STARTED;
     while ((n_remain != 0 && !is_antiprompt) || params.interactive) {
         // predict
@@ -1005,7 +1005,7 @@ int main(int argc, char ** argv) {
             is_interacting = true;
         }
     }
-    timer.updateTimer("Token Generation Timer");   
+    execution_stats_obj.updateTimer("Token Generation Timer");   
 
     if (!path_session.empty() && params.prompt_cache_all && !params.prompt_cache_ro) {
         LOG_TEE("\n%s: saving final output to session file '%s'\n", __func__, path_session.c_str());
@@ -1013,16 +1013,25 @@ int main(int argc, char ** argv) {
     }
 
     llama_print_timings(ctx);
-    std::cout << "Token Generation Timer: " << timer.getElapsedTime("Token Generation Timer") << " ms" << std::endl;
-
+    std::cout << "Token Generation Timer: " << execution_stats_obj.getElapsedTime("Token Generation Timer") << " ms" << std::endl;
 
 #ifdef REPLAY_MODE
     std::cout << "\nThis output was from the REPLAY_MODE\n";
-    std::cout << "PIM Timer: " << timer.getElapsedTime("PIM Timer") << " ms" << std::endl;
+    std::cout << "PIM Timer: " << execution_stats_obj.getElapsedTime("PIM Timer") << " ms" << std::endl;
 #else
     std::cout << "\nOutputs recorded to saved_values/ \n";
-    std::cout << "GEMV Timer: " << timer.getElapsedTime("GEMV Timer") << " ms" << std::endl;
+    std::cout << "GEMV Timer: " << execution_stats_obj.getElapsedTime("GEMV Timer") << " ms" << std::endl;
 #endif 
+
+    std::cout << "GPU GEMV OPS NOT REPLAYED = " << execution_stats_obj.read_gemv_counter("GPU GEMV OPS NOT REPLAYED") << "\n";
+    std::cout << "REPLAYED GPU GEMV OPS = " << execution_stats_obj.read_gemv_counter("REPLAYED GPU GEMV OPS") << "\n";
+    std::cout << "GPU GEMV OPS NOT RECORDED = " << execution_stats_obj.read_gemv_counter("GPU GEMV OPS NOT RECORDED") << "\n";
+    std::cout << "RECORDED GPU GEMV OPS = " << execution_stats_obj.read_gemv_counter("RECORDED GPU GEMV OPS") << "\n";
+
+    std::cout << "CPU GEMV OPS NOT REPLAYED = " << execution_stats_obj.read_gemv_counter("CPU GEMV OPS NOT REPLAYED") << "\n";
+    std::cout << "CPU GEMV OPS REPLAYED = " << execution_stats_obj.read_gemv_counter("CPU GEMV OPS REPLAYED") << "\n";
+    std::cout << "CPU GEMV OPS NOT RECORDED = " << execution_stats_obj.read_gemv_counter("CPU GEMV OPS NOT RECORDED") << "\n";
+    std::cout << "CPU GEMV OPS RECORDED = " << execution_stats_obj.read_gemv_counter("CPU GEMV OPS RECORDED") << "\n";
 
     write_logfile(ctx, params, model, input_tokens, output_ss.str(), output_tokens);
 

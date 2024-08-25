@@ -278,9 +278,11 @@ class tinyBLAS {
 
 #ifdef REPLAY_MODE
     void matmul(int64_t m, int64_t n) {
+        ExecutionStats& execution_stats_obj = ExecutionStats::getInstance();
         mnpack(0, m, 0, n);
 
         if((n != 1) || (token_generation_phase_has_started == TOKEN_GENERATION_NOT_STARTED) || (m <= 8192)) {
+            execution_stats_obj.increment_gemv_counter("CPU GEMV OPS NOT REPLAYED");
             return;
         }
 
@@ -306,7 +308,8 @@ class tinyBLAS {
             );
         ++gemv_iteration;
         
-        ExecutionTimer& timer = ExecutionTimer::getInstance();
+        ExecutionStats& execution_stats_obj = ExecutionStats::getInstance();
+        execution_stats_obj.increment_gemv_counter("CPU GEMV OPS REPLAYED");
         auto end_time = std::chrono::high_resolution_clock::now();
         double this_function_overhead_in_ns = std::chrono::duration<double, std::nano>(end_time - start_time).count();
         double time_to_sleep_for_this_gemv_iter = data.pim_execution_time_in_ns - this_function_overhead_in_ns;
@@ -322,26 +325,27 @@ class tinyBLAS {
         std::chrono::nanoseconds sleep_duration(static_cast<long long>(time_to_sleep_for_this_gemv_iter));
     
         std::atomic_thread_fence(std::memory_order_acquire);
-        timer.startTimer("PIM Timer"); 
+        execution_stats_obj.startTimer("PIM Timer"); 
         std::this_thread::sleep_for(sleep_duration);
-        timer.updateTimer("PIM Timer");
+        execution_stats_obj.updateTimer("PIM Timer");
         std::atomic_thread_fence(std::memory_order_release);
         mtx.unlock();  // Lock the mutex
     }
 #else   // RECORD MODE
     // Vanilla Code
     void matmul(int64_t m, int64_t n) {
-        
+        ExecutionStats& execution_stats_obj = ExecutionStats::getInstance();
+
         if((n != 1) || (token_generation_phase_has_started == TOKEN_GENERATION_NOT_STARTED) || (m <= 8192)) {
             mnpack(0, m, 0, n);
+            execution_stats_obj.increment_gemv_counter("CPU GEMV OPS NOT RECORDED");
             mtx.unlock();  // Unlock the mutex
             return;
         } else {
-            ExecutionTimer& timer = ExecutionTimer::getInstance();
             mtx.lock();  // Lock the mutex
-            timer.startTimer("CPU GEMV Timer");
+            execution_stats_obj.startTimer("CPU GEMV Timer");
             mnpack(0, m, 0, n);
-            timer.updateTimer("CPU GEMV Timer");
+            execution_stats_obj.updateTimer("CPU GEMV Timer");
         }
 
         double pim_time_for_this_gemv_op_in_ns = simulate_gemv_on_pim(n, m);
@@ -368,6 +372,7 @@ class tinyBLAS {
         std::ofstream outfile(output_filename);
         outfile << output_json.dump(4) << std::endl;
         outfile.close();
+        execution_stats_obj.increment_gemv_counter("CPU GEMV OPS RECORDED");
         // compare_results(dst, gemv_iteration, nrows);
         ++gemv_iteration;
 
