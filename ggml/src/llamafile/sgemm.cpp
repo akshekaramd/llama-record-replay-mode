@@ -260,46 +260,6 @@ template <> inline __m512 load(const ggml_fp16_t *p) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // FLOATING POINT MATRIX MULTIPLICATION
 
-class pim_timer {
-public:
-    // Delete copy constructor and assignment operator
-    pim_timer(const pim_timer&) = delete;
-    pim_timer& operator=(const pim_timer&) = delete;
-
-    static pim_timer& getInstance() {
-        static pim_timer instance;
-        return instance;
-    }
-
-    void reset() {
-        total_pim_time_ = 0;
-    }
-
-    void update_timer(double new_total_pim_time) {
-        total_pim_time_ = new_total_pim_time;
-
-        // If you are updating the timer, that indicates a new PIM execution
-        // has taken place, hence we increase the num_of_pim_ops_ value
-        ++num_of_pim_ops_;
-    }
-
-    double getTotalElapsedTime() {
-        return total_pim_time_;
-    }
-
-    int64_t get_num_of_pim_ops() {
-        return num_of_pim_ops_;
-    }
-
-private:
-    pim_timer() : total_pim_time_(0.0) {
-        total_pim_time_ = 0;
-    }
-
-    double total_pim_time_ = 0;
-    int64_t num_of_pim_ops_ = 0;
-};
-
 #define     TOKEN_GENERATION_HAS_STARTED     1
 #define     TOKEN_GENERATION_NOT_STARTED     0
 

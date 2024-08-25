@@ -723,28 +723,6 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
 
     std::cout << " token_generation_phase_has_started = " << token_generation_phase_has_started << "\n";
 
-    // GEMVTimer& gemv_timer = GEMVTimer::getInstance();
-    // GEMV_plus_Sim_Timer& gemv_plus_sim_timer = GEMV_plus_Sim_Timer::getInstance();
-    // pim_timer& pim_timer_obj = pim_timer::getInstance();
-
-    /*
-    if(prompt_response_phase_started == TOKEN_GENERATION_HAS_STARTED) { 
-	// Reset the gemv_timer at this point since previous GEMV calls were for model loading phase,
-        // prompt sampling phase and prompt evaluation phase.
-        // Now the model will generate a response for the given prompt after parsing and 
-        // understanding the input prompt. 
-
-        gemv_plus_sim_timer.reset();
-        gemv_timer.reset();
-
-        // We reset the flag back to zero 
-        // TODO - Can we document this better to avoid the confusion?
-        prompt_response_phase_started = TOKEN_GENERATION_NOT_STARTED;
-    }*/
-
-    // gemv_plus_sim_timer.start();
-    // gemv_timer.start();
-
     ExecutionTimer& timer = ExecutionTimer::getInstance();
     timer.startTimer("GPU GEMV Timer");
     GGML_ASSERT(ncols % (GGML_CUDA_DMMV_X*2) == 0);
@@ -763,15 +741,12 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     // Copy the result back to host
     float *h_dst;
     h_dst = (float*)malloc(nrows * sizeof(float));
-    // std::vector<float> h_dst(nrows);
     cudaMemcpy(h_dst, dst, nrows * sizeof(float), cudaMemcpyDeviceToHost);
 
-    // std::cout << "nrows=" << nrows << " ncols=" << ncols << " \n";
     std::vector<float> dst_array;
 
     for (int i = 0; i < nrows; ++i) {
         dst_array.push_back(h_dst[i]);
-        //std::cout << "iter-" << i << " = " << dst_array[i] << "\n";
     }
 
     // Convert the output to JSON format
