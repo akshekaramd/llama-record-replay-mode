@@ -69,7 +69,13 @@ void populateDataFromJson() {
         DataStruct data;
         data.iteration = j["iteration"].get<uint32_t>();
         data.nrows = j["nrows"].get<uint32_t>();
+
+#ifdef AIE_MODE
+        data.aie_execution_time_in_us = j["gemv_aie_exec_time_in_us"].get<double>();
+#else   // This is PIM MODE
         data.pim_execution_time_in_ns = j["gemv_pim_exec_time_in_ns"].get<double>();
+#endif  // AIE_MODE check
+
         // data.output_matrix_size = j["output_matrix_size"].get<uint32_t>();
 
         // Copy the output_result_matrix array from JSON
@@ -94,7 +100,12 @@ void readDataFromMemory(size_t index) {
     // Read and print the data from the specified index in the vector
     std::cout << "Iteration: " << data.iteration << std::endl;
     std::cout << "Number of Rows: " << data.nrows << std::endl;
+#ifdef AIE_MODE
+    std::cout << "AIE Execution Time (us): " << data.aie_execution_time_in_us << std::endl;
+#else   // This is PIM MODE
     std::cout << "PIM Execution Time (ns): " << data.pim_execution_time_in_ns << std::endl;
+#endif  // AIE_MODE check
+    
     std::cout << "Output Matrix Size: " << data.output_matrix_size << std::endl;
     std::cout << "First Element of Output Result Matrix: " << data.output_result_matrix[0] << std::endl; // Example of accessing array
 }
@@ -238,3 +249,60 @@ double simulate_gemv_on_pim(int input_dimension_arg, int output_dimension_arg) {
     return time_to_execute_this_gemv_op;
 }
 // ********************* AK - Changes end here *************************
+
+
+// ********** AIE Related Code ****************
+
+// Function to round up to the nearest multiple of 288 (capped at 2016)
+int determineTileSize(int n) {
+    int tileSize = 288;
+    int roundedSize = ((n + tileSize - 1) / tileSize) * tileSize;
+    return (roundedSize > 2016) ? 2016 : roundedSize;
+}
+
+// Function to calculate the number of GEMV operations based on the tile size
+int calculateGEMVOperations(int n, int tileSize) {
+    int roundedN = ((n + tileSize - 1) / tileSize) * tileSize;
+    int tilesPerDimension = roundedN / tileSize;
+    return tilesPerDimension * tilesPerDimension;
+}
+
+// Function to determine the execution cost (in microseconds) based on tile size
+double getGEMVCost(int tileSize) {
+    if (tileSize == 288) return 541.2;
+    else if (tileSize == 576) return 602.7;
+    else if (tileSize == 864) return 891.5;
+    else if (tileSize == 1152) return 1350.8;
+    else if (tileSize == 1440) return 1755.5;
+    else if (tileSize == 1728) return 2358.5;
+    else if (tileSize == 2016) return 2864.8;
+    else {
+        std::cout << "Illegal tile size encoutnered ... Exiting!\n";
+        exit(0);
+    }
+
+    return 0; // Technically control should not come here
+}
+
+double simualate_gemv_on_aie(uint32_t output_dimension) {
+    std::cout << "Running on AIE - GEMV Dimension size = " << output_dimension << "\n";
+
+    // Determine the minimum tile size for the given matrix dimension N
+    int tileSize = determineTileSize(output_dimension);
+    
+    // Calculate the number of GEMV operations based on the tile size
+    int numOperations = calculateGEMVOperations(output_dimension, tileSize);
+    
+    // Get the cost per GEMV operation for the determined tile size
+    double cost_per_gemv_in_us = getGEMVCost(tileSize);
+
+    // Calculate the total execution cost
+    double total_execution_time_in_us = numOperations * cost_per_gemv_in_us;
+
+    std::cout << "Determined tile size: " << tileSize << std::endl;
+    std::cout << "Number of GEMV operations required: " << numOperations << std::endl;
+    std::cout << "Cost per GEMV operation: " << cost_per_gemv_in_us << " us" << std::endl;
+    std::cout << "Total execution cost for this run = " << total_execution_time_in_us << " us" << std::endl;
+
+    return total_execution_time_in_us;
+}

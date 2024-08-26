@@ -1014,7 +1014,11 @@ int main(int argc, char ** argv) {
 
     llama_print_timings(ctx);
     std::cout << "\nToken Generation Timer \t= " << execution_stats_obj.getElapsedTime("Token Generation Timer") << " ms \n";
-    std::cout << "PIM Timer \t\t\t= " << execution_stats_obj.getElapsedTime("PIM Timer") << " ms \n\n";
+#ifdef AIE_MODE
+    std::cout << "AIE Timer \t\t\t= " << execution_stats_obj.getElapsedTime("AIE Timer") << " ms\n\n";
+#else   // This is in PIM MODE
+    std::cout << "PIM Timer \t\t\t= " << execution_stats_obj.getElapsedTime("PIM Timer") << " ms\n\n";
+#endif  // AIE_MODE check
     
     std::cout << "GPU GEMV OPS NOT REPLAYED \t= " << execution_stats_obj.read_gemv_counter("GPU GEMV OPS NOT REPLAYED") << "\n";
     std::cout << "GPU REPLAYED GEMV OPS \t\t= " << execution_stats_obj.read_gemv_counter("REPLAYED GPU GEMV OPS") << "\n";
