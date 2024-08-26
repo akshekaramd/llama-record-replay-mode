@@ -367,7 +367,7 @@ class tinyBLAS {
         }
 
 #ifdef AIE_MODE
-        double aie_time_for_this_gemv_op_in_us = simulate_gemv_on_pim(m);
+        double aie_time_for_this_gemv_op_in_us = simualate_gemv_on_aie(m);
 #else   // This is in PIM MODE
         double pim_time_for_this_gemv_op_in_ns = simulate_gemv_on_pim(n, m);
 #endif  // AIE_MODE check
