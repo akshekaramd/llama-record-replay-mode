@@ -760,7 +760,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
 
     // Simulate with these dimensions on PIM 
 #ifdef AIE_MODE
-    double aie_time_for_this_gemv_op_in_us = simulate_gemv_on_pim(nrows);
+    double aie_time_for_this_gemv_op_in_us = simualate_gemv_on_aie(nrows);
 #else   // This is in PIM MODE
     double pim_time_for_this_gemv_op_in_ns = simulate_gemv_on_pim(ncols, nrows);
 #endif  // AIE_MODE check

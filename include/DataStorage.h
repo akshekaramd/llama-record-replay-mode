@@ -139,4 +139,10 @@ private:
     // Following variables are used to keep track of number of GEMV ops
     std::map<std::string, uint64_t> gemv_counter;
 };
+
+double simualate_gemv_on_aie(uint32_t output_dimension);
+double getGEMVCost(int tileSize);
+int determineTileSize(int n);
+int calculateGEMVOperations(int n, int tileSize);
+
 // #endif // DATA_STORAGE_H
