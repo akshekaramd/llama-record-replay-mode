@@ -646,13 +646,13 @@ void compare_results(float *gpu_result, uint32_t iteration_number, int nrows) {
 #define     GPU_MINIMUM_OUTPUT_OFFLOAD_VECTOR_LENTH     1024   // For output vector dimension lower than this, we do not offload to PIM and run it on GPU
 
 #ifdef REPLAY_MODE
-static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
+static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream, bool offload_to_pim) {
     cudaDeviceSynchronize();
     ExecutionStats& execution_stats_obj = ExecutionStats::getInstance();
     
     // Execute the replay ops only for token generation phase
     // For rest of the ops, execute on the actual GPU
-    if(token_generation_phase_has_started == TOKEN_GENERATION_NOT_STARTED || nrows < GPU_MINIMUM_OUTPUT_OFFLOAD_VECTOR_LENTH) {
+    if(token_generation_phase_has_started == TOKEN_GENERATION_NOT_STARTED || nrows < GPU_MINIMUM_OUTPUT_OFFLOAD_VECTOR_LENTH || offload_to_pim == false) {
         execution_stats_obj.increment_gemv_counter("GPU GEMV OPS NOT REPLAYED");
         GGML_ASSERT(ncols % (GGML_CUDA_DMMV_X*2) == 0);
         const int block_num_y = (nrows + GGML_CUDA_MMV_Y - 1) / GGML_CUDA_MMV_Y;
@@ -726,7 +726,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
 
 #else  // This is in RECORD_MODE
 
-static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream) {
+static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream, bool offload_to_pim) {
 
     // Wait for the GPU to finish its prev. work before the following starts
     cudaDeviceSynchronize();
@@ -734,7 +734,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     ExecutionStats& execution_stats_obj = ExecutionStats::getInstance();
     // Execute the replay ops only for token generation phase
     // For rest of the ops, execute on the actual GPU
-    if(token_generation_phase_has_started == TOKEN_GENERATION_NOT_STARTED || nrows < GPU_MINIMUM_OUTPUT_OFFLOAD_VECTOR_LENTH) {
+    if(token_generation_phase_has_started == TOKEN_GENERATION_NOT_STARTED || nrows < GPU_MINIMUM_OUTPUT_OFFLOAD_VECTOR_LENTH || offload_to_pim == false) {
         GGML_ASSERT(ncols % (GGML_CUDA_DMMV_X*2) == 0);
         const int block_num_y = (nrows + GGML_CUDA_MMV_Y - 1) / GGML_CUDA_MMV_Y;
         const dim3 block_nums(block_num_y, 1, 1);
@@ -864,8 +864,33 @@ void ggml_cuda_op_dequantize_mul_mat_vec(
             dequantize_mul_mat_vec_q6_K_cuda(src0_dd_i, src1_ddf_i, dst_dd_i, ne00, row_diff, stream);
             break;
         case GGML_TYPE_F16:
-            convert_mul_mat_vec_f16_cuda(src0_dd_i, src1_dfloat, dst_dd_i, ne00, row_diff, stream);
+            {
+
+            // Linear Transformation related to QKV vectors and the 2 used in Feed Forward Networks
+            // are to be offloaded unto PIM
+            // This leaves us with two GEMV ops that shouldnt be offloaded unto PIM which are
+            // ffn_gate --> This is a gating function used to selectively suppress and amplify certain 
+            //              signals of a by multiplying the input with a gating vector
+            // token_embd --> Used to convert the embeddings into a token  
+            std::string tensor_name = ggml_get_name(src0);
+            bool offload_to_pim = false;
+
+            if (    (tensor_name.find("ffn_down") != std::string::npos) ||
+                    (tensor_name.find("ffn_up") != std::string::npos) ||
+                    (tensor_name.find("attn_q") != std::string::npos) ||
+                    (tensor_name.find("attn_k") != std::string::npos) ||
+                    (tensor_name.find("attn_v") != std::string::npos) ||
+                    (tensor_name.find("attn_output") != std::string::npos)) {
+                offload_to_pim = true;
+            } else {
+                // std::cout << "Encountered an op that shouldnt be offloaded - src0-op_name = "
+                //            << ggml_get_name(src0) << "\n";
+                offload_to_pim = false;
+            }
+            convert_mul_mat_vec_f16_cuda(src0_dd_i, 
+                src1_dfloat, dst_dd_i, ne00, row_diff, stream, offload_to_pim);
             break;
+        }
         default:
             GGML_ABORT("fatal error");
             break;
