@@ -90,9 +90,9 @@ public:
     void updateTimer(const std::string& timerName) {
         auto now = std::chrono::steady_clock::now();
         if (elapsedTimes.find(timerName) != elapsedTimes.end()) {
-            elapsedTimes[timerName] += std::chrono::duration_cast<std::chrono::milliseconds>(now - timers[timerName]).count();
+            elapsedTimes[timerName] += std::chrono::duration_cast<std::chrono::nanoseconds>(now - timers[timerName]).count();
         } else {
-            elapsedTimes[timerName] = std::chrono::duration_cast<std::chrono::milliseconds>(now - timers[timerName]).count();
+            elapsedTimes[timerName] = std::chrono::duration_cast<std::chrono::nanoseconds>(now - timers[timerName]).count();
         }
         timers[timerName] = now;
     }
