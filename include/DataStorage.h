@@ -28,11 +28,7 @@ struct DataStruct {
     uint32_t iteration;
     uint32_t nrows;
 
-#ifdef AIE_MODE
-    double aie_execution_time_in_us;
-#else   // This is PIM MODE
     double pim_execution_time_in_ns;
-#endif  // AIE_MODE check
 
     uint32_t output_matrix_size;
     std::vector<float> output_result_matrix;

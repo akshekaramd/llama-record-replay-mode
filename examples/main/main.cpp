@@ -1032,11 +1032,7 @@ int main(int argc, char ** argv) {
                 << " ns\t\t Time spent on GEMV ops that would be offloaded to PIM \n\n";
 
 #ifdef REPLAY_MODE
-#ifdef AIE_MODE
-    std::cout << "\nThis output was from the REPLAY_MODE for AIE\n";
-#else   // This is in PIM MODE
     std::cout << "\nThis output was from the REPLAY_MODE for PIM\n";
-#endif  // AIE Mode check
 #else
     std::cout << "\nOutputs recorded to saved_values/ \n";
 #endif  // Replay Mode check

@@ -311,25 +311,6 @@ class tinyBLAS {
         execution_stats_obj.increment_gemv_counter("CPU GEMV OPS REPLAYED");
         auto end_time = std::chrono::high_resolution_clock::now();
 
-        #ifdef AIE_MODE
-        // AIE values usually are in microsecond range. Hence first convert to microsecond
-        double this_function_overhead_in_us = std::chrono::duration<double, std::micro>(end_time - start_time).count();
-        double time_to_sleep_for_this_gemv_iter_in_us = data.aie_execution_time_in_us - this_function_overhead_in_us;
-        if(time_to_sleep_for_this_gemv_iter_in_us < 0) {
-            // If function_overhead > pim_execution_time, then you encounter a negative sleep value
-            // In this case, there is nothing much one can do except sleep for 0 ns and get out. 
-            // Results will be off by a small value. But this should not change the end-to-end numbers majorly.
-            time_to_sleep_for_this_gemv_iter_in_us = 0;
-        }
-        // Convert the double value to std::chrono::nanoseconds
-        std::chrono::microseconds sleep_duration(static_cast<long long>(time_to_sleep_for_this_gemv_iter_in_us));
-        std::atomic_thread_fence(std::memory_order_acquire); 
-        execution_stats_obj.startTimer("AIE Timer");
-        std::this_thread::sleep_for(sleep_duration);
-        execution_stats_obj.updateTimer("AIE Timer");
-        std::atomic_thread_fence(std::memory_order_release);
-
-        #else   // This is in PIM MODE
         double this_function_overhead_in_ns = std::chrono::duration<double, std::nano>(end_time - start_time).count();
         double time_to_sleep_for_this_gemv_iter_in_ns = data.pim_execution_time_in_ns - this_function_overhead_in_ns;
         if(time_to_sleep_for_this_gemv_iter_in_ns < 0) {
@@ -345,7 +326,6 @@ class tinyBLAS {
         std::this_thread::sleep_for(sleep_duration);
         execution_stats_obj.updateTimer("PIM Timer");
         std::atomic_thread_fence(std::memory_order_release);
-        #endif  // AIE_MODE check
 
         mtx.unlock();  // Lock the mutex
     }
@@ -366,12 +346,7 @@ class tinyBLAS {
             execution_stats_obj.updateTimer("CPU GEMV Timer");
         }
 
-#ifdef AIE_MODE
-        double aie_time_for_this_gemv_op_in_us = simualate_gemv_on_aie(m);
-#else   // This is in PIM MODE
         double pim_time_for_this_gemv_op_in_ns = simulate_gemv_on_pim(n, m);
-#endif  // AIE_MODE check
-
 
         std::vector<float> dst_array;  // Replace 1024 with the appropriate size
 
@@ -385,11 +360,7 @@ class tinyBLAS {
         output_json["iteration"] = gemv_iteration;
         output_json["nrows"] = m;
 
-#ifdef AIE_MODE
-    output_json["gemv_aie_exec_time_in_us"] = aie_time_for_this_gemv_op_in_us;
-#else   // This is in PIM MODE
-    output_json["gemv_pim_exec_time_in_ns"] = pim_time_for_this_gemv_op_in_ns;
-#endif  // AIE_MODE check
+        output_json["gemv_pim_exec_time_in_ns"] = pim_time_for_this_gemv_op_in_ns;
         
         output_json["output_matrix"] = dst_array;
 
