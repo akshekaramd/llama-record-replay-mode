@@ -84,7 +84,7 @@ if __name__ == "__main__":
         replay_runs_data.append(replay_run_data)
         append_to_csv(replay_run_data, csv_filename)
         print(f"Replay mode run {i+1} completed.")
-        time.sleep(5)
+        time.sleep(10)
     
     # Calculate averages for replay mode only
     averages = calculate_averages(replay_runs_data)
