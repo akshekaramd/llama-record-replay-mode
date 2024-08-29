@@ -579,11 +579,6 @@ int main(int argc, char ** argv) {
         embd_inp.push_back(decoder_start_token_id);
     }
 
-#ifdef REPLAY_MODE
-    // Example: Read data from the first element in the reserved memory location
-    readDataFromMemory(0);
-#endif
-
 	ExecutionStats& execution_stats_obj = ExecutionStats::getInstance();
     execution_stats_obj.startTimer("Token Generation Timer");
     token_generation_phase_has_started = TOKEN_GENERATION_HAS_STARTED;
