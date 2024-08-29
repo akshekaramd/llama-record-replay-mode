@@ -555,6 +555,8 @@ int main(int argc, char ** argv) {
         embd_inp.push_back(decoder_start_token_id);
     }
 
+    // Token Generation Time starts here
+    auto start_time = std::chrono::high_resolution_clock::now();
     while ((n_remain != 0 && !is_antiprompt) || params.interactive) {
         // predict
         if (!embd.empty()) {
@@ -973,6 +975,7 @@ int main(int argc, char ** argv) {
             is_interacting = true;
         }
     }
+    auto end_time = std::chrono::high_resolution_clock::now();
 
     if (!path_session.empty() && params.prompt_cache_all && !params.prompt_cache_ro) {
         LOG_TEE("\n%s: saving final output to session file '%s'\n", __func__, path_session.c_str());
@@ -989,6 +992,8 @@ int main(int argc, char ** argv) {
     llama_sampling_free(ctx_sampling);
     llama_backend_free();
 
+    auto token_generation_time_in_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time);
+    std::cout << "Token Generation Time: " << token_generation_time_in_ns.count() << " nanoseconds \n";
 #ifndef LOG_DISABLE_LOGS
     LOG_TEE("Log end\n");
 #endif // LOG_DISABLE_LOGS
