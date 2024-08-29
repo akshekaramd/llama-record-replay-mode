@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 # Project name and version
-project(testProject VERSION 1.0)
+project(pim_simulator VERSION 1.0)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 14)
@@ -11,20 +11,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # Include directories
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
-include_directories(/home/rocm-user/googletest/googletest/include)
-
-# Compile into a c++ library 
-#add_library(lpddr_sim_lib STATIC src/lpddr_sim_wrapper.cpp)
+add_subdirectory(googletest)
 
 # Add the main executable
-add_executable(testProject src/main_2.cpp)
+add_executable(pim_simulator src/pim_simulator_main.cpp)
 
 # Add compile options
-target_compile_options(testProject PRIVATE -O3)
+target_compile_options(pim_simulator PRIVATE -O3)
 
 # Specify the location of the mylib library
 set(MYLIB_DIR ${PROJECT_SOURCE_DIR}/lib)
 
 # Link the library
-#target_link_libraries(testProject ${MYLIB_DIR}/liblp5pimsim.a m lpddr_sim_lib)
-target_link_libraries(testProject ${MYLIB_DIR}/liblp5pimsim.a)
+target_link_libraries(pim_simulator gtest gtest_main ${MYLIB_DIR}/liblp5pimsim.a)

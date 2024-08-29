@@ -1,3 +1,5 @@
+// This was testing program. This is depracated. Just kept it here, for any future testing
+
 #include "lpddr_sim_wrapper.h"
 
 using namespace PimSim;
