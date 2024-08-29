@@ -643,8 +643,6 @@ void compare_results(float *gpu_result, uint32_t iteration_number, int nrows) {
 #define     TOKEN_GENERATION_HAS_STARTED     1
 #define     TOKEN_GENERATION_NOT_STARTED     0
 
-#define     GPU_MINIMUM_OUTPUT_OFFLOAD_VECTOR_LENTH     0   // For output vector dimension lower than this, we do not offload to PIM and run it on GPU
-
 #ifdef REPLAY_MODE
 static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream, bool offload_to_pim) {
     cudaDeviceSynchronize();
@@ -652,7 +650,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     
     // Execute the replay ops only for token generation phase
     // For rest of the ops, execute on the actual GPU
-    if(token_generation_phase_has_started == TOKEN_GENERATION_NOT_STARTED || nrows < GPU_MINIMUM_OUTPUT_OFFLOAD_VECTOR_LENTH || offload_to_pim == false) {
+    if(token_generation_phase_has_started == TOKEN_GENERATION_NOT_STARTED || offload_to_pim == false) {
         execution_stats_obj.increment_gemv_counter("GPU GEMV OPS NOT REPLAYED");
         GGML_ASSERT(ncols % (GGML_CUDA_DMMV_X*2) == 0);
         const int block_num_y = (nrows + GGML_CUDA_MMV_Y - 1) / GGML_CUDA_MMV_Y;
@@ -735,7 +733,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     ExecutionStats& execution_stats_obj = ExecutionStats::getInstance();
     // Execute the replay ops only for token generation phase
     // For rest of the ops, execute on the actual GPU
-    if(token_generation_phase_has_started == TOKEN_GENERATION_NOT_STARTED || nrows < GPU_MINIMUM_OUTPUT_OFFLOAD_VECTOR_LENTH || offload_to_pim == false) {
+    if(token_generation_phase_has_started == TOKEN_GENERATION_NOT_STARTED || offload_to_pim == false) {
         GGML_ASSERT(ncols % (GGML_CUDA_DMMV_X*2) == 0);
         const int block_num_y = (nrows + GGML_CUDA_MMV_Y - 1) / GGML_CUDA_MMV_Y;
         const dim3 block_nums(block_num_y, 1, 1);
