@@ -263,8 +263,6 @@ template <> inline __m512 load(const ggml_fp16_t *p) {
 #define     TOKEN_GENERATION_HAS_STARTED     1
 #define     TOKEN_GENERATION_NOT_STARTED     0
 
-#define     CPU_MINIMUM_OUTPUT_OFFLOAD_VECTOR_LENTH     1024   // For output vector dimension lower than this, we do not offload to PIM and run it on CPU
-
 template <int KN, typename D, typename V, typename TA, typename TB, typename TC>
 class tinyBLAS {
   public:
@@ -334,6 +332,9 @@ class tinyBLAS {
     void matmul(int64_t m, int64_t n) {
         ExecutionStats& execution_stats_obj = ExecutionStats::getInstance();
 
+        // AK - TODO : Need to implement a logic to offload only GEMVs here
+        // Also you need to perform a check to offload only tensors having the names associated
+        // with linear transformations in token generation phase
         if((n != 1) || (token_generation_phase_has_started == TOKEN_GENERATION_NOT_STARTED) || (m <= 8192)) {
             mnpack(0, m, 0, n);
             execution_stats_obj.increment_gemv_counter("CPU GEMV OPS NOT RECORDED");
