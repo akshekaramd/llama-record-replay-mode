@@ -1,4 +1,4 @@
-#include "DataStorage.h"
+#include "RecordReplayMode.h"
 #include <nlohmann/json.hpp>
 #include <vector>
 #include <iostream>
@@ -206,11 +206,11 @@ double simulate_gemv_on_pim(int input_dimension_arg, int output_dimension_arg) {
 
     // If it exists, then return the value back
     if(lookup_result == true) {
-        // std::cout << " DataStorage.cpp : Look Up result found! Reusing CACHED timings values ... \n";
+        // std::cout << " RecordReplayMode.cpp : Look Up result found! Reusing CACHED timings values ... \n";
         return time_to_execute_this_gemv_op;
     }
     // else
-    //    std::cout << " DataStorage.cpp : New Arguments encountered. Running an actual simulation ... \n";
+    //    std::cout << " RecordReplayMode.cpp : New Arguments encountered. Running an actual simulation ... \n";
     // If not, send it to PIM and return the value back
 
     // If you are here, then this is a new set of dimensions that have not been encountered so far, 
@@ -223,16 +223,16 @@ double simulate_gemv_on_pim(int input_dimension_arg, int output_dimension_arg) {
                         roundToNearestPowerOf2(output_dimension_arg)
                 );
     if(ret_value != SUCCESS_CODE) {
-        printf("DataStorage.cpp: Error in sending dimension args to simulator. Exiting \n");
+        printf("RecordReplayMode.cpp: Error in sending dimension args to simulator. Exiting \n");
         exit(0);
     }
 
     // Recieve the exec time from the simulator
     time_to_execute_this_gemv_op = 0;
     ret_value = receiveExecTimeInNsAndUpdateTiming(&time_to_execute_this_gemv_op);
-    // std::cout << " DataStorage.cpp : ret_value @228 = " << ret_value << "\n";
+    // std::cout << " RecordReplayMode.cpp : ret_value @228 = " << ret_value << "\n";
     if(ret_value != SUCCESS_CODE) {
-        printf("DataStorage.cpp : Error in Recieving Execution Time from simulator. Exiting \n");
+        printf("RecordReplayMode.cpp : Error in Recieving Execution Time from simulator. Exiting \n");
         exit(0);
     }
 

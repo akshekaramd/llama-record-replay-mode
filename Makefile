@@ -1154,8 +1154,8 @@ common/common.o: \
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 common/DataStorage.o: \
-	common/DataStorage.cpp \
-	include/DataStorage.h
+	common/RecordReplayMode.cpp \
+	include/RecordReplayMode.h
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 common/sampling.o: \

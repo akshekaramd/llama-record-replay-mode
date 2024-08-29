@@ -7,7 +7,7 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <vector>
-#include "DataStorage.h"
+#include "RecordReplayMode.h"
 #include <time.h>
 #include <chrono>
 #include <thread>
@@ -646,12 +646,12 @@ void compare_results(float *gpu_result, uint32_t iteration_number, int nrows) {
 #ifdef REPLAY_MODE
 static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream, bool offload_to_pim) {
     cudaDeviceSynchronize();
-    ExecutionStats& execution_stats_obj = ExecutionStats::getInstance();
+    RecordReplayAPI& record_replay_obj = RecordReplayAPI::getInstance();
     
     // Execute the replay ops only for token generation phase
     // For rest of the ops, execute on the actual GPU
     if(token_generation_phase_has_started == TOKEN_GENERATION_NOT_STARTED || offload_to_pim == false) {
-        execution_stats_obj.increment_gemv_counter("GPU GEMV OPS NOT REPLAYED");
+        record_replay_obj.increment_gemv_counter("GPU GEMV OPS NOT REPLAYED");
         GGML_ASSERT(ncols % (GGML_CUDA_DMMV_X*2) == 0);
         const int block_num_y = (nrows + GGML_CUDA_MMV_Y - 1) / GGML_CUDA_MMV_Y;
         const dim3 block_nums(block_num_y, 1, 1);
@@ -681,7 +681,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
         );
     ++gemv_iteration;
     
-    execution_stats_obj.increment_gemv_counter("REPLAYED GPU GEMV OPS");
+    record_replay_obj.increment_gemv_counter("REPLAYED GPU GEMV OPS");
     auto end_time = std::chrono::high_resolution_clock::now();
     
     double this_function_overhead_in_ns = std::chrono::duration<double, std::nano>(end_time - start_time).count();
@@ -695,9 +695,9 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     // Convert the double value to std::chrono::nanoseconds
     std::chrono::nanoseconds sleep_duration(static_cast<long long>(time_to_sleep_for_this_gemv_iter_in_ns));
     std::atomic_thread_fence(std::memory_order_acquire); 
-    execution_stats_obj.startTimer("PIM Timer");
+    record_replay_obj.startTimer("PIM Timer");
     std::this_thread::sleep_for(sleep_duration);
-    execution_stats_obj.updateTimer("PIM Timer");
+    record_replay_obj.updateTimer("PIM Timer");
     std::atomic_thread_fence(std::memory_order_release);
 
 }
@@ -709,7 +709,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     // Wait for the GPU to finish its prev. work before the following starts
     cudaDeviceSynchronize();
 
-    ExecutionStats& execution_stats_obj = ExecutionStats::getInstance();
+    RecordReplayAPI& record_replay_obj = RecordReplayAPI::getInstance();
     // Execute the replay ops only for token generation phase
     // For rest of the ops, execute on the actual GPU
     if(token_generation_phase_has_started == TOKEN_GENERATION_NOT_STARTED || offload_to_pim == false) {
@@ -717,7 +717,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
         const int block_num_y = (nrows + GGML_CUDA_MMV_Y - 1) / GGML_CUDA_MMV_Y;
         const dim3 block_nums(block_num_y, 1, 1);
         const dim3 block_dims(WARP_SIZE, GGML_CUDA_MMV_Y, 1);
-        execution_stats_obj.increment_gemv_counter("GPU GEMV OPS NOT RECORDED");
+        record_replay_obj.increment_gemv_counter("GPU GEMV OPS NOT RECORDED");
         dequantize_mul_mat_vec<GGML_TYPE_F16>
             <<<block_nums, block_dims, 0, stream>>>(vx, y, dst, ncols, nrows);
         return;
@@ -725,7 +725,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
 
     std::cout << " token_generation_phase_has_started = " << token_generation_phase_has_started << "\n";
 
-    execution_stats_obj.startTimer("GPU GEMV Timer");
+    record_replay_obj.startTimer("GPU GEMV Timer");
     GGML_ASSERT(ncols % (GGML_CUDA_DMMV_X*2) == 0);
     const int block_num_y = (nrows + GGML_CUDA_MMV_Y - 1) / GGML_CUDA_MMV_Y;
     const dim3 block_nums(block_num_y, 1, 1);
@@ -734,7 +734,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
         <<<block_nums, block_dims, 0, stream>>>(vx, y, dst, ncols, nrows);
     
     cudaDeviceSynchronize();
-    execution_stats_obj.updateTimer("GPU GEMV Timer");
+    record_replay_obj.updateTimer("GPU GEMV Timer");
 
     // Simulate with these dimensions on PIM 
     double pim_time_for_this_gemv_op_in_ns = simulate_gemv_on_pim(ncols, nrows);
@@ -765,7 +765,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     outfile << output_json.dump(4) << std::endl;
     outfile.close();
 
-    execution_stats_obj.increment_gemv_counter("RECORDED GPU GEMV OPS");
+    record_replay_obj.increment_gemv_counter("RECORDED GPU GEMV OPS");
     ++gemv_iteration;
     std::cout << "GPU ------ gemv_iteration = " << gemv_iteration << " \n";
 }

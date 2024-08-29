@@ -65,17 +65,17 @@ void populateDataFromJson();
 void readDataFromMemory(size_t index);
 double simulate_gemv_on_pim(int input_dimension_arg, int output_dimension_arg);
 
-class ExecutionStats {
+class RecordReplayAPI {
 public:
     // Get the singleton instance
-    static ExecutionStats& getInstance() {
-        static ExecutionStats instance;
+    static RecordReplayAPI& getInstance() {
+        static RecordReplayAPI instance;
         return instance;
     }
 
     // Delete copy constructor and assignment operator to prevent copying
-    ExecutionStats(const ExecutionStats&) = delete;
-    ExecutionStats& operator=(const ExecutionStats&) = delete;
+    RecordReplayAPI(const RecordReplayAPI&) = delete;
+    RecordReplayAPI& operator=(const RecordReplayAPI&) = delete;
 
     // Start or reset a timer with the given name
     void startTimer(const std::string& timerName) {
@@ -126,8 +126,8 @@ public:
     }
 
 private:
-    ExecutionStats() = default;
-    ~ExecutionStats() = default;
+    RecordReplayAPI() = default;
+    ~RecordReplayAPI() = default;
 
     std::map<std::string, std::chrono::steady_clock::time_point> timers;
     std::map<std::string, long long> elapsedTimes; // In nanoseconds
