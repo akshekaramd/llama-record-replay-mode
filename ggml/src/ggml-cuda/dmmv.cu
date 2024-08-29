@@ -643,7 +643,7 @@ void compare_results(float *gpu_result, uint32_t iteration_number, int nrows) {
 #define     TOKEN_GENERATION_HAS_STARTED     1
 #define     TOKEN_GENERATION_NOT_STARTED     0
 
-#define     GPU_MINIMUM_OUTPUT_OFFLOAD_VECTOR_LENTH     1024   // For output vector dimension lower than this, we do not offload to PIM and run it on GPU
+#define     GPU_MINIMUM_OUTPUT_OFFLOAD_VECTOR_LENTH     0   // For output vector dimension lower than this, we do not offload to PIM and run it on GPU
 
 #ifdef REPLAY_MODE
 static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, float * dst, const int ncols, const int nrows, cudaStream_t stream, bool offload_to_pim) {
@@ -687,6 +687,7 @@ static void convert_mul_mat_vec_f16_cuda(const void * vx, const dfloat * y, floa
     auto end_time = std::chrono::high_resolution_clock::now();
     
 #ifdef AIE_MODE
+	std::cout << "I am inside REPLAY mode of AIE Timer \n";
     // AIE values usually are in microsecond range. Hence first convert to microsecond
     double this_function_overhead_in_us = std::chrono::duration<double, std::micro>(end_time - start_time).count();
     double time_to_sleep_for_this_gemv_iter_in_us = data.aie_execution_time_in_us - this_function_overhead_in_us;
@@ -880,7 +881,8 @@ void ggml_cuda_op_dequantize_mul_mat_vec(
                     (tensor_name.find("attn_q") != std::string::npos) ||
                     (tensor_name.find("attn_k") != std::string::npos) ||
                     (tensor_name.find("attn_v") != std::string::npos) ||
-                    (tensor_name.find("attn_output") != std::string::npos)) {
+                    (tensor_name.find("attn_output") != std::string::npos)) {// ||
+		    // (tensor_name.find("token_embd") != std::string::npos) ) {
                 offload_to_pim = true;
             } else {
                 // std::cout << "Encountered an op that shouldnt be offloaded - src0-op_name = "
